@@ -369,12 +369,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
                 json_data['address'] = geocodeInternal(nmea_to_decimal(json_data['latitude']),nmea_to_decimal(json_data['longitude']))
-                if not sio.connected:
-                    try:
-                        sio.connect(server_url, transports=['websocket'])
-                        print("Connected to WebSocket server successfully!")
-                    except Exception as e:
-                        print(f"Failed to connect to WebSocket server: {e}")
                 sio.emit('vehicle_update', json_data)
         except Exception as e:
             print("Error storing data in MongoDB:", e)
@@ -403,12 +397,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
-                if not sio.connected:
-                    try:
-                        sio.connect(server_url, transports=['websocket'])
-                        print("Connected to WebSocket server successfully!")
-                    except Exception as e:
-                        print(f"Failed to connect to WebSocket server: {e}")
                 sio.emit('sos_alert', json_data)
                 print("Emited SOS alert")
         except Exception as e:
