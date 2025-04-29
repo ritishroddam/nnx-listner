@@ -1,17 +1,11 @@
 import subprocess
 import os
 
-# List of files to run as subprocesses
-files_to_run = ["map_server.py", "distinctVehicleDataStore.py", "calculate_past_distances.py"]
+map_server_path = os.path.join(os.path.dirname(__file__), 'map_server.py')
+subprocess.Popen(['python', map_server_path])
 
-# Get the current directory
-current_directory = os.path.dirname(os.path.abspath(__file__))
+run_distinct_vehicle_data_store_path = os.path.join(os.path.dirname(__file__), 'distinctVehicleDataStore.py')
+subprocess.Popen(['python', run_distinct_vehicle_data_store_path])
 
-# Run each file as a subprocess
-for file in files_to_run:
-    file_path = os.path.join(current_directory, file)
-    if os.path.exists(file_path):
-        print(f"Running {file}...")
-        subprocess.run(["python", file_path])
-    else:
-        print(f"File {file} not found in the workspace.")
+run_calculate_past_distances_path = os.path.join(os.path.dirname(__file__), 'calculate_past_distances.py')
+subprocess.Popen(['python', run_calculate_past_distances_path])
