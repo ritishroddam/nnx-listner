@@ -73,6 +73,7 @@ def nmea_to_decimal(nmea_value):
     
     # Convert to decimal degrees
     decimal_degrees = degrees + (minutes / 60.0)
+    print(f"Converted NMEA {nmea_value} to decimal degrees: {decimal_degrees}")
     return decimal_degrees
     
 def geocodeInternal(lat,lng):
