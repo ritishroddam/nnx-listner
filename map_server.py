@@ -58,18 +58,15 @@ def validate_coordinates(lat, lng):
     
 def nmea_to_decimal(nmea_value):
     # Check if the string has a leading zero that should be removed
-    if nmea_value.startswith('0'):
-        nmea_value = nmea_value[1:]
-    
-    # Find where the minutes part starts
-    if len(nmea_value) >= 5:  # At least one digit for degrees + 4 for minutes
-        degrees = float(nmea_value[:-7])  # Everything before the last 7 characters
-        minutes = float(nmea_value[-7:])  # Last 7 characters
+    nmea_value = str(nmea_value)
+
+    # Extract degrees and minutes
+    if '.' in nmea_value:
+        dot_index = nmea_value.index('.')
+        degrees = float(nmea_value[:dot_index - 2])  # All characters before the last two digits before the dot
+        minutes = float(nmea_value[dot_index - 2:])  # Last two digits before the dot and everything after
     else:
-        # Handle potential formatting issues
-        parts = nmea_value.split('.')
-        degrees = float(parts[0][:-2])
-        minutes = float(parts[0][-2:] + '.' + parts[1] if len(parts) > 1 else parts[0][-2:])
+        raise ValueError("Invalid NMEA format")
     
     # Convert to decimal degrees
     decimal_degrees = degrees + (minutes / 60.0)
