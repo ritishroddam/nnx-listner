@@ -368,6 +368,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
+                print(json_data['imei'])
                 json_data['address'] = geocodeInternal(nmea_to_decimal(json_data['latitude']),nmea_to_decimal(json_data['longitude']))
                 sio.emit('vehicle_update', json_data)
         except Exception as e:
