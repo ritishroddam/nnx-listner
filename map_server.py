@@ -149,7 +149,7 @@ def lastEmitInitial():
 
 sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed certs
 
-server_url = "https://cordonnx.com/:5000" 
+server_url = "https://cordonnx.com:5000" 
 cert_path = os.path.join("cert", "fullchain.pem")  
 
 ssl_context = ssl.create_default_context(cafile=cert_path)
