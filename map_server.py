@@ -281,7 +281,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     return None
 
                 latitude = str(nmea_to_decimal(parts[4])) if parts[4] != '-' else ''
-                longitude = (nmea_to_decimal(parts[6])) if parts[6] != '-' else ''
+                longitude = str(nmea_to_decimal(parts[6])) if parts[6] != '-' else ''
 
                 speed_mph = float(parts[8]) if parts[8].replace('.', '', 1).isdigit() else 0.0
                 speed_kmph = round(speed_mph * 1.60934, 2)
