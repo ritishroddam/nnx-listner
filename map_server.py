@@ -280,8 +280,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     print(f"Received data does not contain at least {expected_fields_count} fields.")
                     return None
 
-                latitude = parts[4] if parts[4] != '-' else ''
-                longitude = parts[6] if parts[6] != '-' else ''
+                latitude = nmea_to_decimal(parts[4]) if parts[4] != '-' else ''
+                longitude = nmea_to_decimal(parts[6]) if parts[6] != '-' else ''
                 
                 # Capture address (assuming address is passed after cellid field)
                 address = parts[25] if len(parts) > 25 else ''
@@ -367,7 +367,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
                 print(json_data['imei'])
-                json_data['address'] = geocodeInternal(nmea_to_decimal(json_data['latitude']),nmea_to_decimal(json_data['longitude']))
+                json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
                 sio.emit('vehicle_update', json_data)
         except Exception as e:
             print("Error storing data in MongoDB:", e)
