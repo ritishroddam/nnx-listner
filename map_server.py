@@ -368,6 +368,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     json_data['LicensePlateNumber'] = 'Unknown'
                 print(json_data['imei'])
                 json_data['address'] = geocodeInternal(nmea_to_decimal(json_data['latitude']),nmea_to_decimal(json_data['longitude']))
+                print(json_data['address'])
                 sio.emit('vehicle_update', json_data)
         except Exception as e:
             print("Error storing data in MongoDB:", e)
