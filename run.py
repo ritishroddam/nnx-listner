@@ -14,7 +14,7 @@ def monitor_processes(processes):
             if process.poll() is not None:  # Check if the process has stopped
                 print(f"{script_name} stopped. Restarting...")
                 processes[script_name] = start_process(script_name)
-        time.sleep(5)  # Check every 5 seconds
+        time.sleep(3600)  # Check every 5 seconds
 
 if __name__ == '__main__':
     # Start all scripts
