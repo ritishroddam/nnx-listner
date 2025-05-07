@@ -361,8 +361,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
                 if inventory_data:
                     json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
+                    json_data['VehicleType'] = inventory_data.get('vehicle_type', 'Unknown')
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
+                    json_data['VehicleType'] = 'Unknown'
                 print(json_data['imei'])
                 json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
                 sio.emit('vehicle_update', json_data)
