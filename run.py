@@ -1,22 +1,28 @@
 import subprocess
 import os
+import time
 
-def start_map_server():
-    map_server_path = os.path.join(os.path.dirname(__file__), 'map_server.py')
-    subprocess.Popen(['python', map_server_path])
-    print("Map server started!")
+def start_process(script_name):
+    """Start a subprocess for the given script and return the process."""
+    script_path = os.path.join(os.path.dirname(__file__), script_name)
+    return subprocess.Popen(['python', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-def start_distinct_vehicle_data_store():
-    run_distinct_vehicle_data_store_path = os.path.join(os.path.dirname(__file__), 'distinctVehicleDataStore.py')
-    subprocess.Popen(['python', run_distinct_vehicle_data_store_path])
-    print("Distinct vehicle data store started!")
-
-def start_calculate_past_distances():
-    run_calculate_past_distances_path = os.path.join(os.path.dirname(__file__), 'calculate_past_distances.py')
-    subprocess.Popen(['python', run_calculate_past_distances_path])
-    print("Calculate past distances started!")
+def monitor_processes(processes):
+    """Monitor the processes and restart them if they stop."""
+    while True:
+        for script_name, process in processes.items():
+            if process.poll() is not None:  # Check if the process has stopped
+                print(f"{script_name} stopped. Restarting...")
+                processes[script_name] = start_process(script_name)
+        time.sleep(5)  # Check every 5 seconds
 
 if __name__ == '__main__':
-    start_map_server()
-    start_distinct_vehicle_data_store()
-    start_calculate_past_distances()
+    # Start all scripts
+    processes = {
+        'map_server.py': start_process('map_server.py'),
+        'distinctVehicleDataStore.py': start_process('distinctVehicleDataStore.py'),
+        'calculate_past_distances.py': start_process('calculate_past_distances.py'),
+    }
+
+    print("All scripts started. Monitoring processes...")
+    monitor_processes(processes)
