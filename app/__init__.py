@@ -9,23 +9,23 @@ app = Flask(__name__)
 from app import routes
 
 # Paths to the scripts
-map_server_path = os.path.join(os.path.dirname(__file__), 'map_server.py')
 ais140_path = os.path.join(os.path.dirname(__file__), 'ais140.py')
+map_server_path = os.path.join(os.path.dirname(__file__), 'map_server.py')
 run_distinct_vehicle_data_store_path = os.path.join(os.path.dirname(__file__), 'distinctVehicleDataStore.py')
 
 # Subprocess references
 subprocesses = {
+    "ais140": None,
     "map_server": None,
-    "distinct_vehicle_data_store": None,
-    "ais140": None
+    "distinct_vehicle_data_store": None
 }
 
 # Function to start subprocesses
 def start_subprocesses():
     global subprocesses
+    subprocesses["ais140"] = subprocess.Popen(['python', ais140_path])
     subprocesses["map_server"] = subprocess.Popen(['python', map_server_path])
     subprocesses["distinct_vehicle_data_store"] = subprocess.Popen(['python', run_distinct_vehicle_data_store_path])
-    subprocesses["ais140"] = subprocess.Popen(['python', ais140_path])
 
 # Function to monitor subprocesses
 def monitor_subprocesses():
