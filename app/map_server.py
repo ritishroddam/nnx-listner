@@ -364,7 +364,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
                     json_data['VehicleType'] = 'Unknown'
-                print(json_data['imei'])
                 json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
                 sio.emit('vehicle_update', json_data)
         except Exception as e:
