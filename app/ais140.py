@@ -2,7 +2,7 @@ import socket
 
 def start_server():
     host = '0.0.0.0'  # Listen on all available interfaces
-    port = 8000
+    port = 8002
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((host, port))
