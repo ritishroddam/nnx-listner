@@ -68,51 +68,9 @@ def update_distinct_atlanta():
             distinct_atlanta_collection.insert_one(doc)
 
         print('Distinct documents updated successfully')
-        
-        # Send data one by one and compare with existing data
-        count = 0
-        for imei, doc in distinct_documents.items():
-            if imei in existing_documents:
-                # Compare with existing data
-                if doc != existing_documents[imei]:
-                    # Data has changed, emit the updated data
-                    emit_data(doc)
-                    count += 1
-            else:
-                # New data, emit it
-                emit_data(doc)
-                count += 1
-                
-        print(f"Emitted {count} updated documents")
 
     except Exception as e:
         print(f'Error updating distinct documents: {str(e)}')
-
-def emit_data(json_data):
-    try:
-        if not sio.connected:
-            try:
-                sio.connect(server_url, transports=['websocket'])
-                print("Connected to WebSocket server successfully!")
-            except Exception as e:
-                print(f"Failed to connect to WebSocket server: {e}")
-
-        json_data['date_time'] = str(json_data['date_time'])
-        json_data['timestamp'] = str(json_data['timestamp'])
-        inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
-        if inventory_data:
-            json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
-        else:
-            json_data['LicensePlateNumber'] = 'Unknown'
-        json_data['_id'] = str(json_data['_id'])
-
-        # sio.emit('vehicle_update', json_data)
-        # print(f"Emitted data for IMEI {json_data['imei']}")
-
-            
-
-    except Exception as e:
-        print(f"Error emitting data: {str(e)}")
 
 if __name__ == '__main__':
     while True:
