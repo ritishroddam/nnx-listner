@@ -66,7 +66,7 @@ def nmea_to_decimal(nmea_value):
         degrees = float(nmea_value[:dot_index - 2])  # All characters before the last two digits before the dot
         minutes = float(nmea_value[dot_index - 2:])  # Last two digits before the dot and everything after
     else:
-        raise ValueError(f"Invalid NMEA format{nmea_value}")
+        raise ValueError("Invalid NMEA format")
     
     # Convert to decimal degrees
     decimal_degrees = degrees + (minutes / 60.0)
