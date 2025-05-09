@@ -163,6 +163,10 @@ def ensure_socket_connection():
     """Ensure the socket is connected, and reconnect if necessary."""
     if not sio.connected:
         try:
+            sio.disconnect()
+        except Exception:
+            pass
+        try:
             sio.connect(server_url, transports=['websocket'])
             print("Reconnected to WebSocket server successfully!")
         except Exception as e:
