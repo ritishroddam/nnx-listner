@@ -355,8 +355,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             result = collection.insert_one(json_data)
 
             ensure_socket_connection()
-            
-            # sio.emit('vehicle_update', json_data, room="all_data")
+
             if json_data['gps'] == 'A' and MyTCPHandler.should_emit(json_data['imei'],json_data['date_time']):
                 json_data['_id'] = str(json_data['_id'])
                 json_data['date_time'] = str(json_data['date_time'])
@@ -384,8 +383,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 'time': json_data['time'],
                 'latitude': json_data['latitude'],
                 'longitude': json_data['longitude'],
-                'date_time': str(json_data['date_time']),
-                'timestamp': str(json_data['timestamp']),
+                'date_time': json_data['date_time'],
+                'timestamp': json_data['timestamp'],
             }
             sos_logs_collection.insert_one(sos_log)
 
