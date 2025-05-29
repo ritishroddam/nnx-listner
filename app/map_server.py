@@ -398,8 +398,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
-                sio.emit('sos_alert', json_data)
-                print("Emited SOS alert")
         except Exception as e:
             print("Error logging SOS alert to MongoDB:", e)
 
