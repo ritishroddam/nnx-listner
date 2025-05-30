@@ -387,17 +387,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 'timestamp': json_data['timestamp'],
             }
             sos_logs_collection.insert_one(sos_log)
-
-            ensure_socket_connection() 
-
-            if json_data['gps'] == 'A' and MyTCPHandler.convert_to_datetime(json_data['date'],json_data['time']) > datetime.now() - timedelta(minutes = 5):
-                json_data['date_time'] = str(json_data['date_time'])
-                json_data['timestamp'] = str(json_data['timestamp'])
-                inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
-                if inventory_data:
-                    json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
-                else:
-                    json_data['LicensePlateNumber'] = 'Unknown'
         except Exception as e:
             print("Error logging SOS alert to MongoDB:", e)
 
@@ -443,5 +432,11 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 if __name__ == "__main__":
-    lastEmitInitial()
-    run_servers()
+    try:
+        lastEmitInitial()
+        run_servers()
+    except Exception as e:
+        import traceback
+        with open("fatal_error.log", "w") as f:
+            f.write(traceback.format_exc())
+        print("Fatal error occurred, see fatal_error.log")
