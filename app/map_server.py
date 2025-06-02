@@ -364,9 +364,13 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 if inventory_data:
                     json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
                     json_data['VehicleType'] = inventory_data.get('vehicle_type', 'Unknown')
+                    json_data['slowSpeed'] = float(inventory_data.get('slowSpeed', "0") or 40.0)
+                    json_data['normalSpeed'] = float(inventory_data.get('normalSpeed', "0") or 60.0)
                 else:
                     json_data['LicensePlateNumber'] = 'Unknown'
                     json_data['VehicleType'] = 'Unknown'
+                    json_data['slowSpeed'] = 40.0
+                    json_data['normalSpeed'] = 60.0
                 json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
 
                 sio.emit('vehicle_live_update', json_data)
