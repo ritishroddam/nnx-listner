@@ -133,7 +133,7 @@ def geocodeInternal(lat,lng):
 def lastEmitInitial():
     all_documents = list(collection.aggregate([
         {"$match": {"gps": "A", "status": "01"}},
-        {"$sort": {"timestamp": -1}},
+        {"$sort": {"date_time": -1}},
         {
             "$group": {
                 "_id": "$imei",
