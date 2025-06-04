@@ -35,6 +35,7 @@ app = Flask(__name__)
 CORS(app)
 
 last_emit_time = {}
+comamandImeiList = []
 
 gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
@@ -298,7 +299,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
                 date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
                 date_time = date_time_ist.astimezone(timezone('UTC'))
-
                 json_data = {
                     'status': self.status_prefix,
                     'imei': self.clean_imei(parts[0]),
