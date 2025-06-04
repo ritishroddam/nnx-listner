@@ -299,6 +299,19 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
                 date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
                 date_time = date_time_ist.astimezone(timezone('UTC'))
+                
+                imei = self.clean_imei(parts[0])
+                conn = self.request
+                command = "#SERVERCHANGE::gps.cordonnx.com::8000;<6906>"
+                if imei not in comamandImeiList:
+                    if conn:
+                        try:
+                            conn.sendall(command.encode('utf-8'))
+                            print("Sent command to client:", imei)
+                            comamandImeiList.append(imei)
+                        except Exception as e:
+                            print("Error sending command to client:", e)
+                
                 json_data = {
                     'status': self.status_prefix,
                     'imei': self.clean_imei(parts[0]),
