@@ -17,7 +17,7 @@ def start_server():
                     data = client_socket.recv(1024)
                     if not data:
                         break
-                    print(f"Received: {data.decode('utf-8')}")
+                    print(f"Received AIS 140 data: {data}")
 
 if __name__ == "__main__":
     start_server()
