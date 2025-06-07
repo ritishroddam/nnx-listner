@@ -14,10 +14,18 @@ def start_server():
             print(f"Connection established with {client_address}")
             with client_socket:
                 while True:
-                    data = client_socket.recv(1024)
-                    if not data:
+                    try:
+                        data = client_socket.recv(1024)
+                        if not data:
+                            print(f"Client {client_address} disconnected gracefully.")
+                            break
+                        print(f"Received AIS 140 data: {data}")
+                    except ConnectionResetError:
+                        print(f"Client {client_address} disconnected unexpectedly.")
                         break
-                    print(f"Received AIS 140 data: {data}")
+                    except Exception as e:
+                        print(f"Socket error with {client_address}: {e}")
+                        break
 
 if __name__ == "__main__":
     start_server()
