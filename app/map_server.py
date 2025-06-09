@@ -243,14 +243,17 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 self.store_data_in_mongodb(json_data)
             else:
                 print("Invalid JSON format")
+                time.sleep(0.005)
 
         except Exception as e:
             print("Error handling request:", e)
             try:
                 error_data = receive_data.decode('utf-8', errors='replace').strip()
                 print("Error data:", error_data, e)
+                time.sleep(0.005)
             except Exception as e:
                 print("Error decoding data.", e)
+                time.sleep(0.005)
 
     def parse_json_data(self, data):
         try:
