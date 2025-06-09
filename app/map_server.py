@@ -390,8 +390,12 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
 
                 if sio.connected:
-                    sio.emit('vehicle_live_update', json_data)
-                    sio.emit('vehicle_update', json_data)
+                    try:
+                        sio.emit('vehicle_live_update', json_data)
+                        sio.emit('vehicle_update', json_data)
+                    except Exception as e:
+                        print("Error emitting data to WebSocket:", e)
+                        time.sleep(0.0005)
         except Exception as e:
             print("Error storing data in MongoDB:", e)
 
