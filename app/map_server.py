@@ -8,6 +8,7 @@ import googlemaps
 from geopy.distance import geodesic
 import socketio
 from math import radians, sin, cos, atan2, degrees
+import re
 
 last_emit_time = {}
 comamandImeiList = []
@@ -279,6 +280,18 @@ async def parse_and_process_data(data):
     else:
         print("[DEBUG] Invalid JSON format")
 
+def split_atlanta_messages(data):
+    # Use regex to split on the control character + ATL + 15 digits
+    pattern = rb'(\x03ATL\d{15})'
+    # Find all message start positions
+    matches = list(re.finditer(pattern, data))
+    messages = []
+    for i, match in enumerate(matches):
+        start = match.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(data)
+        messages.append(data[start:end])
+    return messages
+
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"[DEBUG] Connection established with {addr}")
@@ -288,13 +301,15 @@ async def handle_client(reader, writer):
             if not data:
                 print(f"[DEBUG] Client {addr} disconnected gracefully.")
                 break
-            try:
-                decoded_data = data.decode('utf-8').strip()
-                print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
-            except UnicodeDecodeError:
-                decoded_data = data.decode('latin-1').strip()
-                print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-            await parse_and_process_data(decoded_data)
+            # Split the raw bytes into individual messages
+            for msg_bytes in split_atlanta_messages(data):
+                try:
+                    decoded_data = msg_bytes.decode('utf-8').strip()
+                    print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
+                except UnicodeDecodeError:
+                    decoded_data = msg_bytes.decode('latin-1').strip()
+                    print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
+                await parse_and_process_data(decoded_data)
     except Exception as e:
         print(f"[DEBUG] Socket error with {addr}: {e}")
     finally:
