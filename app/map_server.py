@@ -1,6 +1,5 @@
 import socket
-import json
-import time
+import threading
 from datetime import datetime, timedelta
 from pytz import timezone
 import os
@@ -310,6 +309,29 @@ def parse_and_process_data(data):
         print("Error handling request:", e)
         print("Error data:", data, e)
 
+def handle_client(client_socket, client_address):
+    print(f"[DEBUG] Connection established with {client_address}")
+    with client_socket:
+        while True:
+            try:
+                data = client_socket.recv(4096)
+                if not data:
+                    print(f"[DEBUG] Client {client_address} disconnected gracefully.")
+                    break
+                try:
+                    decoded_data = data.decode('utf-8').strip()
+                    print(f"[DEBUG] Decoded data (utf-8) from {client_address}: {decoded_data!r}")
+                except UnicodeDecodeError:
+                    decoded_data = data.decode('latin-1').strip()
+                    print(f"[DEBUG] Decoded data (latin-1) from {client_address}: {decoded_data!r}")
+                parse_and_process_data(decoded_data)
+            except ConnectionResetError:
+                print(f"[DEBUG] Client {client_address} disconnected unexpectedly.")
+                break
+            except Exception as e:
+                print(f"[DEBUG] Socket error with {client_address}: {e}")
+                break
+
 def start_server():
     host = '0.0.0.0'
     port = 8000
@@ -334,27 +356,10 @@ def start_server():
 
         while True:
             client_socket, client_address = server_socket.accept()
-            print(f"[DEBUG] Connection established with {client_address}")
-            with client_socket:
-                while True:
-                    try:
-                        data = client_socket.recv(4096)
-                        if not data:
-                            print(f"[DEBUG] Client {client_address} disconnected gracefully.")
-                            break
-                        try:
-                            decoded_data = data.decode('utf-8').strip()
-                            print(f"[DEBUG] Decoded data (utf-8) from {client_address}: {decoded_data!r}")
-                        except UnicodeDecodeError:
-                            decoded_data = data.decode('latin-1').strip()
-                            print(f"[DEBUG] Decoded data (latin-1) from {client_address}: {decoded_data!r}")
-                        parse_and_process_data(decoded_data)
-                    except ConnectionResetError:
-                        print(f"[DEBUG] Client {client_address} disconnected unexpectedly.")
-                        break
-                    except Exception as e:
-                        print(f"[DEBUG] Socket error with {client_address}: {e}")
-                        break
+            client_thread = threading.Thread(
+                target=handle_client, args=(client_socket, client_address), daemon=True
+            )
+            client_thread.start()
 
 if __name__ == "__main__":
     print("[DEBUG] __main__ entrypoint")
