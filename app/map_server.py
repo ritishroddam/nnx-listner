@@ -1,5 +1,4 @@
-import socket
-import threading
+import asyncio
 from datetime import datetime, timedelta
 from pytz import timezone
 import os
@@ -8,7 +7,7 @@ import ssl
 import googlemaps
 from geopy.distance import geodesic
 import socketio
-from math import radians, sin, cos, sqrt, atan2, degrees
+from math import radians, sin, cos, atan2, degrees
 
 last_emit_time = {}
 comamandImeiList = []
@@ -41,18 +40,13 @@ def validate_coordinates(lat, lng):
         raise ValueError(f"Invalid coordinates {lat} and {lng}")
 
 def nmea_to_decimal(nmea_value):
-    # Check if the string has a leading zero that should be removed
     nmea_value = str(nmea_value)
-
-    # Extract degrees and minutes
     if '.' in nmea_value:
         dot_index = nmea_value.index('.')
-        degrees = float(nmea_value[:dot_index - 2])  # All characters before the last two digits before the dot
-        minutes = float(nmea_value[dot_index - 2:])  # Last two digits before the dot and everything after
+        degrees = float(nmea_value[:dot_index - 2])
+        minutes = float(nmea_value[dot_index - 2:])
     else:
         raise ValueError("Invalid NMEA format")
-    
-    # Convert to decimal degrees
     decimal_degrees = degrees + (minutes / 60.0)
     return decimal_degrees
 
@@ -66,54 +60,39 @@ def geocodeInternal(lat,lng):
         return "Invalid coordinates"
 
     try:
-        # Step 1: Fast bounding box filter (0.5km range)
         nearby_entries = geoCodeCollection.find({
             "lat": {"$gte": lat - 0.0045, "$lte": lat + 0.0045},
             "lng": {"$gte": lng - 0.0045, "$lte": lng + 0.0045}
         })
-
-        # Step 2: Precise distance calculation
         nearest_entry = None
-        min_distance = 0.5  # Max search radius in km
-        
+        min_distance = 0.5
         for entry in nearby_entries:
             saved_coord = (entry['lat'], entry['lng'])
             current_coord = (lat, lng)
             distance = geodesic(saved_coord, current_coord).km
-            
             if distance <= min_distance:
                 nearest_entry = entry
                 min_distance = distance
-
         if nearest_entry:
             saved_coord = (nearest_entry['lat'], nearest_entry['lng'])
             current_coord = (lat, lng)
             bearing = calculate_bearing(saved_coord, current_coord)
-            
             return (f"{min_distance:.2f} km {bearing} from {nearest_entry['address']}"
                       if min_distance > 0 else nearest_entry['address'])
-
-        # Step 3: Geocode new coordinates
         reverse_geocode_result = gmaps.reverse_geocode((lat, lng))
         if not reverse_geocode_result:
             print("Geocoding API failed")
             return "Address unavailable"
-
         address = reverse_geocode_result[0]['formatted_address']
-        
-        # Step 4: Insert new entry
         geoCodeCollection.insert_one({
             'lat': lat,
             'lng': lng,
             'address': address
         })
-
         return address
-
     except Exception as e:
         print(f"Geocoding error: {str(e)}", exc_info=True)
         return "Error retrieving address"
-
 
 def lastEmitInitial():
     all_documents = list(collection.aggregate([
@@ -127,12 +106,10 @@ def lastEmitInitial():
         },
         {"$replaceRoot": {"newRoot": "$latest_doc"}}
     ]))
-
     for doc in all_documents:
         last_emit_time[doc['imei']] = doc['date_time']
 
 def clean_imei(imei):
-# Extract the last 15 characters of the IMEI
     return imei[-15:]
 
 def clean_cellid(cellid):
@@ -145,12 +122,9 @@ def should_emit(imei, date_time):
     return False
 
 def convert_to_datetime(date_str: str, time_str: str) -> datetime:
-# Parse the date and time components
-    dt_str = date_str + time_str  # Combine both
-    dt_obj = datetime.strptime(dt_str, "%d%m%y%H%M%S")  # Convert to datetime object
+    dt_str = date_str + time_str
+    dt_obj = datetime.strptime(dt_str, "%d%m%y%H%M%S")
     return dt_obj
-
-# ...existing code...
 
 def store_data_in_mongodb(json_data):
     try:
@@ -295,72 +269,55 @@ def parse_json_data(data):
         print("Error parsing JSON data:", e)
         return None
 
-def parse_and_process_data(data):
+async def parse_and_process_data(data):
+    json_data = parse_json_data(data)
+    if json_data:
+        sos_state = json_data.get('sos', '0')
+        if sos_state == '1':
+            log_sos_to_mongodb(json_data)
+        store_data_in_mongodb(json_data)
+    else:
+        print("[DEBUG] Invalid JSON format")
+
+async def handle_client(reader, writer):
+    addr = writer.get_extra_info('peername')
+    print(f"[DEBUG] Connection established with {addr}")
     try:
-        json_data = parse_json_data(data)
-        if json_data:
-            sos_state = json_data.get('sos', '0')
-            if sos_state == '1':
-                log_sos_to_mongodb(json_data)
-            store_data_in_mongodb(json_data)
-        else:
-            print("[DEBUG] Invalid JSON format")
-    except Exception as e:
-        print("Error handling request:", e)
-        print("Error data:", data, e)
-
-def handle_client(client_socket, client_address):
-    print(f"[DEBUG] Connection established with {client_address}")
-    with client_socket:
         while True:
+            data = await reader.read(4096)
+            if not data:
+                print(f"[DEBUG] Client {addr} disconnected gracefully.")
+                break
             try:
-                data = client_socket.recv(4096)
-                if not data:
-                    print(f"[DEBUG] Client {client_address} disconnected gracefully.")
-                    break
-                try:
-                    decoded_data = data.decode('utf-8').strip()
-                    print(f"[DEBUG] Decoded data (utf-8) from {client_address}: {decoded_data!r}")
-                except UnicodeDecodeError:
-                    decoded_data = data.decode('latin-1').strip()
-                    print(f"[DEBUG] Decoded data (latin-1) from {client_address}: {decoded_data!r}")
-                parse_and_process_data(decoded_data)
-            except ConnectionResetError:
-                print(f"[DEBUG] Client {client_address} disconnected unexpectedly.")
-                break
-            except Exception as e:
-                print(f"[DEBUG] Socket error with {client_address}: {e}")
-                break
+                decoded_data = data.decode('utf-8').strip()
+                print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
+            except UnicodeDecodeError:
+                decoded_data = data.decode('latin-1').strip()
+                print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
+            await parse_and_process_data(decoded_data)
+    except Exception as e:
+        print(f"[DEBUG] Socket error with {addr}: {e}")
+    finally:
+        writer.close()
+        await writer.wait_closed()
 
-def start_server():
-    host = '0.0.0.0'
-    port = 8000
-
+async def main():
     global sio, server_url, ssl_context
     sio = socketio.Client(ssl_verify=False)
     server_url = "https://cordonnx.com"
     cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")
     ssl_context = ssl.create_default_context(cafile=cert_path)
-
     try:
         sio.connect(server_url, transports=['websocket'])
         print("[DEBUG] Connected to WebSocket server successfully!")
     except Exception as e:
         print(f"[DEBUG] Failed to connect to WebSocket server: {e}")
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_socket.bind((host, port))
-        server_socket.listen(5)
-        print(f"[DEBUG] Listening for connections on port {port}...")
-
-        while True:
-            client_socket, client_address = server_socket.accept()
-            client_thread = threading.Thread(
-                target=handle_client, args=(client_socket, client_address), daemon=True
-            )
-            client_thread.start()
+    server = await asyncio.start_server(handle_client, '0.0.0.0', 8000)
+    print(f"[DEBUG] Listening for connections on port 8000...")
+    async with server:
+        await server.serve_forever()
 
 if __name__ == "__main__":
     print("[DEBUG] __main__ entrypoint")
-    start_server()
+    asyncio.run(main())
