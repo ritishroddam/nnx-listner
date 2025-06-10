@@ -308,12 +308,11 @@ async def handle_client(reader, writer):
             # Split the raw bytes into individual messages
             for msg_bytes in split_atlanta_messages(data):
                 try:
-                    index_03 = msg_bytes.find(b'\x03')  # Finds first occurrence of \x03
-                    index_01 = msg_bytes.find(b'\x01')  # Finds first occurrence of \x01
-
-                        # Get the first occurring special character
+                    index_03 = msg_bytes.find(b'\x03')
+                    index_01 = msg_bytes.find(b'\x01')
+                    
                     first_special_index = min(i for i in [index_03, index_01] if i != -1)
-                    first_special_char = data[first_special_index:first_special_index+1]
+                    first_special_char = msg_bytes[first_special_index:first_special_index+1]
                     
                     status_prefix = first_special_char.hex()
                     print(status_prefix)
