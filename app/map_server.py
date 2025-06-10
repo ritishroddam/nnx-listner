@@ -286,8 +286,7 @@ async def parse_and_process_data(data, status_prefix):
 
 def split_atlanta_messages(data):
     # Use regex to split on the control character + ATL + 15 digits
-    pattern = rb'(\x03ATL\d{15})'
-    # Find all message start positions
+    pattern = rb'([\x00-\x0F]ATL\d{15})'
     matches = list(re.finditer(pattern, data))
     messages = []
     for i, match in enumerate(matches):
