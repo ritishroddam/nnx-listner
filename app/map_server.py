@@ -184,7 +184,7 @@ def ensure_socket_connection():
         except Exception as e:
             print(f"Failed to reconnect to WebSocket server: {e}")
 
-def parse_json_data(data):
+def parse_json_data(data,status_prefix):
     try:
         parts = data.split(',')
         expected_fields_count = 26
@@ -219,7 +219,6 @@ def parse_json_data(data):
             speed_mph = float(parts[8]) if parts[8].replace('.', '', 1).isdigit() else 0.0
             speed_kmph = round(speed_mph * 1.60934, 2)
             status = parts[0]
-            status_prefix = status[:-15] if len(status) > 15 else ''
             ist = timezone('Asia/Kolkata')
             date_time_str = f"{parts[10]} {parts[2]}"
             date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
@@ -275,8 +274,8 @@ def parse_json_data(data):
         print("Error parsing JSON data:", e)
         return None
 
-async def parse_and_process_data(data):
-    json_data = parse_json_data(data)
+async def parse_and_process_data(data, status_prefix):
+    json_data = parse_json_data(data, status_prefix)
     if json_data:
         sos_state = json_data.get('sos', '0')
         if sos_state == '1':
@@ -309,12 +308,24 @@ async def handle_client(reader, writer):
             # Split the raw bytes into individual messages
             for msg_bytes in split_atlanta_messages(data):
                 try:
+                    index_03 = data.find(b'\x03')  # Finds first occurrence of \x03
+                    index_01 = data.find(b'\x01')  # Finds first occurrence of \x01
+
+                        # Get the first occurring special character
+                    first_special_index = min(i for i in [index_03, index_01] if i != -1)
+                    first_special_char = data[first_special_index:first_special_index+1]
+
+                    status_prefix = first_special_char.hex()
+                except Exception as e:
+                    print(f"[DEBUG] Error finding special characters in data: {e}")
+                    status_prefix = '00'
+                try:
                     decoded_data = msg_bytes.decode('utf-8').strip()
                     print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
                 except UnicodeDecodeError:
                     decoded_data = msg_bytes.decode('latin-1').strip()
                     print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                await parse_and_process_data(decoded_data)
+                await parse_and_process_data(decoded_data, status_prefix)
     except Exception as e:
         print(f"[DEBUG] Socket error with {addr}: {e}")
     finally:
