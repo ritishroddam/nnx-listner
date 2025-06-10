@@ -308,8 +308,8 @@ async def handle_client(reader, writer):
             # Split the raw bytes into individual messages
             for msg_bytes in split_atlanta_messages(data):
                 try:
-                    index_03 = data.find(b'\x03')  # Finds first occurrence of \x03
-                    index_01 = data.find(b'\x01')  # Finds first occurrence of \x01
+                    index_03 = msg_bytes.find(b'\x03')  # Finds first occurrence of \x03
+                    index_01 = msg_bytes.find(b'\x01')  # Finds first occurrence of \x01
 
                         # Get the first occurring special character
                     first_special_index = min(i for i in [index_03, index_01] if i != -1)
@@ -320,6 +320,7 @@ async def handle_client(reader, writer):
                 except Exception as e:
                     print(f"[DEBUG] Error finding special characters in data: {e}")
                     status_prefix = '00'
+                    
                 try:
                     decoded_data = msg_bytes.decode('utf-8').strip()
                     print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
