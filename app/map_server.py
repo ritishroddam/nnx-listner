@@ -149,8 +149,9 @@ def store_data_in_mongodb(json_data):
             json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
             if sio.connected:
                 try:
-                    sio.emit('vehicle_live_update', json_data)
-                    sio.emit('vehicle_update', json_data)
+                    if json_data['sos'] == '01':
+                        sio.emit('vehicle_live_update', json_data)
+                        sio.emit('vehicle_update', json_data)
                 except Exception as e:
                     print("Error emitting data to WebSocket:", e)
     except Exception as e:
