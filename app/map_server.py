@@ -344,8 +344,10 @@ def start_server():
                             break
                         try:
                             decoded_data = data.decode('utf-8').strip()
+                            print(f"[DEBUG] Decoded data (utf-8) from {client_address}: {decoded_data!r}")
                         except UnicodeDecodeError:
                             decoded_data = data.decode('latin-1').strip()
+                            print(f"[DEBUG] Decoded data (latin-1) from {client_address}: {decoded_data!r}")
                         parse_and_process_data(decoded_data)
                     except ConnectionResetError:
                         print(f"[DEBUG] Client {client_address} disconnected unexpectedly.")
