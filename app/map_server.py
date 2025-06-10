@@ -185,7 +185,6 @@ def store_data_in_mongodb(json_data):
                     print("[DEBUG] Data emitted to WebSocket")
                 except Exception as e:
                     print("Error emitting data to WebSocket:", e)
-                    time.sleep(0.0005)
     except Exception as e:
         print("Error storing data in MongoDB:", e)
 
@@ -320,11 +319,9 @@ def parse_and_process_data(data):
             store_data_in_mongodb(json_data)
         else:
             print("[DEBUG] Invalid JSON format")
-            time.sleep(0.005)
     except Exception as e:
         print("Error handling request:", e)
         print("Error data:", data, e)
-        time.sleep(0.005)
 
 def start_server():
     print("[DEBUG] start_server called")
@@ -405,7 +402,6 @@ if __name__ == "__main__":
 #                     sio.emit('vehicle_update', json_data)
 #                 except Exception as e:
 #                     print("Error emitting data to WebSocket:", e)
-#                     time.sleep(0.0005)
 #     except Exception as e:
 #         print("Error storing data in MongoDB:", e)
 
@@ -561,11 +557,9 @@ if __name__ == "__main__":
 #             store_data_in_mongodb(json_data)
 #         else:
 #             print("Invalid JSON format")
-#             time.sleep(0.005)
 #     except Exception as e:
 #         print("Error handling request:", e)
 #         print("Error data:", data, e)
-#         time.sleep(0.005)
 
 # def start_server():
 #     host = '0.0.0.0'
