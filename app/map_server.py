@@ -131,7 +131,7 @@ def store_data_in_mongodb(json_data):
     try:
         result = collection.insert_one(json_data)
         ensure_socket_connection()
-        if json_data['gps'] == 'A' and should_emit(json_data['imei'],json_data['date_time']):
+        if json_data['gps'] == 'A' and json_data['status'] == '01' and should_emit(json_data['imei'],json_data['date_time']):
             json_data['_id'] = str(json_data['_id'])
             json_data['date_time'] = str(json_data['date_time'])
             json_data['timestamp'] = str(json_data['timestamp'])
@@ -149,9 +149,8 @@ def store_data_in_mongodb(json_data):
             json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
             if sio.connected:
                 try:
-                    if json_data['sos'] == '01':
-                        sio.emit('vehicle_live_update', json_data)
-                        sio.emit('vehicle_update', json_data)
+                    sio.emit('vehicle_live_update', json_data)
+                    sio.emit('vehicle_update', json_data)
                 except Exception as e:
                     print("Error emitting data to WebSocket:", e)
     except Exception as e:
