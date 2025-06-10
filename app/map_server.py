@@ -151,7 +151,7 @@ def convert_to_datetime(date_str: str, time_str: str) -> datetime:
     dt_obj = datetime.strptime(dt_str, "%d%m%y%H%M%S")  # Convert to datetime object
     return dt_obj
 
-def store_data_in_mongodb(self, json_data):
+def store_data_in_mongodb(json_data):
     try:
         result = collection.insert_one(json_data)
 
@@ -185,7 +185,7 @@ def store_data_in_mongodb(self, json_data):
         print("Error storing data in MongoDB:", e)
 
 
-def log_sos_to_mongodb(self, json_data):
+def log_sos_to_mongodb(json_data):
     try:
         sos_log = {
             'imei': json_data['imei'],
@@ -213,7 +213,7 @@ def ensure_socket_connection():
         except Exception as e:
             print(f"Failed to reconnect to WebSocket server: {e}")
 
-def parse_json_data(self, data):
+def parse_json_data(data):
     try:
         parts = data.split(',')
         # print(f"Parsed data parts: {parts}")
@@ -261,8 +261,8 @@ def parse_json_data(self, data):
             date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
             date_time = date_time_ist.astimezone(timezone('UTC'))
             
-            # imei = self.clean_imei(parts[0])
-            # conn = self.request
+            # imei = clean_imei(parts[0])
+            # conn = request
             # command = "#SERVERCHANGE::gps.cordonnx.com::8000;<6906>"
             # if imei not in comamandImeiList:
             #     if conn:
@@ -274,8 +274,8 @@ def parse_json_data(self, data):
             #             print("Error sending command to client:", e)
             
             json_data = {
-                'status': self.status_prefix,
-                'imei': self.clean_imei(parts[0]),
+                'status': status_prefix,
+                'imei': clean_imei(parts[0]),
                 'header': parts[1],
                 'time': parts[2],
                 'gps': parts[3],
@@ -311,7 +311,7 @@ def parse_json_data(self, data):
                 'mobCountryCode': parts[22],
                 'mobNetworkCode': parts[23],
                 'localAreaCode': parts[24],
-                'cellid':  self.clean_cellid(parts[25]),  
+                'cellid':  clean_cellid(parts[25]),  
                 'date_time': date_time,
                 'timestamp': datetime.now(timezone('UTC'))     
             }
@@ -324,7 +324,7 @@ def parse_json_data(self, data):
         print("Error parsing JSON data:", e)
         return None
 
-def parse_and_process_data(data, sio):
+def parse_and_process_data(data):
     try:
         # ...copy the logic from MyTCPHandler.parse_json_data and store_data_in_mongodb here...
         # For brevity, only the call structure is shown. Use your existing parsing logic.
@@ -333,7 +333,7 @@ def parse_and_process_data(data, sio):
             sos_state = json_data.get('sos', '0')
             if sos_state == '1':
                 log_sos_to_mongodb(json_data)
-            store_data_in_mongodb(json_data, sio)
+            store_data_in_mongodb(json_data)
         else:
             print("Invalid JSON format")
             time.sleep(0.005)
@@ -377,7 +377,7 @@ def start_server():
                             decoded_data = data.decode('utf-8').strip()
                         except UnicodeDecodeError:
                             decoded_data = data.decode('latin-1').strip()
-                        parse_and_process_data(decoded_data, sio)
+                        parse_and_process_data(decoded_data)
                     except ConnectionResetError:
                         print(f"Client {client_address} disconnected unexpectedly.")
                         break
