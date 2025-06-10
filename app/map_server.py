@@ -314,8 +314,9 @@ async def handle_client(reader, writer):
                         # Get the first occurring special character
                     first_special_index = min(i for i in [index_03, index_01] if i != -1)
                     first_special_char = data[first_special_index:first_special_index+1]
-
+                    
                     status_prefix = first_special_char.hex()
+                    print(status_prefix)
                 except Exception as e:
                     print(f"[DEBUG] Error finding special characters in data: {e}")
                     status_prefix = '00'
