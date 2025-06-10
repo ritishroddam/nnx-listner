@@ -187,7 +187,7 @@ def ensure_socket_connection():
 def parse_json_data(data):
     try:
         parts = data.split(',')
-        expected_fields_count = 35
+        expected_fields_count = 26
         if len(parts) >= expected_fields_count:
             binary_string = parts[14].strip('#')
             ignition, door, sos = '0', '0', '0'
