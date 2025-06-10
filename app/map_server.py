@@ -188,7 +188,6 @@ def parse_json_data(data,status_prefix):
     try:
         parts = data.split(',')
         expected_fields_count = 26
-        print(parts)
         if len(parts) >= expected_fields_count:
             binary_string = parts[14].strip('#')
             ignition, door, sos = '0', '0', '0'
@@ -224,6 +223,7 @@ def parse_json_data(data,status_prefix):
             date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
             date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
             date_time = date_time_ist.astimezone(timezone('UTC'))
+            print(status_prefix)
             json_data = {
                 'status': status_prefix,
                 'imei': clean_imei(parts[0]),
