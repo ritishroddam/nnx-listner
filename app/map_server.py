@@ -10,6 +10,7 @@ import socketio
 from math import radians, sin, cos, atan2, degrees
 import re
 
+client_activity = {}
 last_emit_time = {}
 comamandImeiList = []
 
@@ -24,8 +25,28 @@ geoCodeCollection = db['geocoded_address']
 
 gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
+INACTIVITY_TIMEOUT = 600 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
+
+async def monitor_inactive_clients():
+    while True:
+        now = datetime.now()
+        to_remove = []
+        for addr, info in list(client_activity.items()):
+            last_seen = info['last_seen']
+            writer = info['writer']
+            if (now - last_seen).total_seconds() > INACTIVITY_TIMEOUT:
+                print(f"[DEBUG] Disconnecting inactive client {addr}")
+                try:
+                    writer.close()
+                    await writer.wait_closed()
+                except Exception as e:
+                    print(f"[DEBUG] Error closing writer for {addr}: {e}")
+                to_remove.append(addr)
+        for addr in to_remove:
+            client_activity.pop(addr, None)
+        await asyncio.sleep(60) 
 
 def calculate_bearing(coord1, coord2):
     lat1, lon1 = radians(coord1[0]), radians(coord1[1])
@@ -298,12 +319,15 @@ def split_atlanta_messages(data):
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"[DEBUG] Connection established with {addr}")
+    client_activity[addr] = {'last_seen': datetime.now(), 'writer': writer}
     try:
         while True:
             data = await reader.read(4096)
             if not data:
                 print(f"[DEBUG] Client {addr} disconnected gracefully.")
                 break
+            # Update last seen time
+            client_activity[addr]['last_seen'] = datetime.now()
             # Split the raw bytes into individual messages
             for msg_bytes in split_atlanta_messages(data):
                 try:
@@ -329,6 +353,8 @@ async def handle_client(reader, writer):
     except Exception as e:
         print(f"[DEBUG] Socket error with {addr}: {e}")
     finally:
+        # Remove client from activity tracking and close writer
+        client_activity.pop(addr, None)
         writer.close()
         await writer.wait_closed()
 
@@ -346,6 +372,10 @@ async def main():
 
     server = await asyncio.start_server(handle_client, '0.0.0.0', 8000)
     print(f"[DEBUG] Listening for connections on port 8000...")
+
+    # Start the inactivity monitor
+    asyncio.create_task(monitor_inactive_clients())
+
     async with server:
         await server.serve_forever()
 
