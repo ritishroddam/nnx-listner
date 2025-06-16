@@ -1,13 +1,10 @@
 from pymongo import MongoClient
-from datetime import datetime
-import os
+from datetime import datetime, timedelta
+from pytz import timezone
 import time
 import socketio
-import json
 from pymongo import MongoClient
 import socketio
-import ssl
-import os
 
 sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed certs
 
@@ -16,6 +13,7 @@ db = mongo_client["nnx"]
 atlanta_collection = db['atlanta']
 distinct_atlanta_collection = db['distinctAtlanta']
 vehicle_inventory_collection = db['vehicle_inventory']
+status_collection = db['statusAtlanta']
 
 def update_distinct_atlanta():
     try:
@@ -46,8 +44,29 @@ def update_distinct_atlanta():
 
     except Exception as e:
         print(f'Error updating distinct documents: {str(e)}')
+        
+def atlantaStatusData():
+    utc_now = datetime.now(timezone('UTC'))
+    seven_days_ago = utc_now - timedelta(days=7)
+    pipeline = [
+        {"$match": {"date_time": {"$gte": seven_days_ago}}},
+        {"$sort": {"date_time": -1}},
+        {"$group": {
+            "_id": "$imei",
+            "latest": {"$first": "$$ROOT"},
+            "history": {"$push": {
+                "date_time": "$date_time",
+                "ignition": "$ignition",
+                "speed": "$speed"
+            }}
+        }},
+    ]
+    results = list(atlanta_collection.aggregate(pipeline))
+    for doc in results:
+        status_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
 
 if __name__ == '__main__':
     while True:
         update_distinct_atlanta()
+        atlantaStatusData()
         time.sleep(60)  # Wait for 60 seconds before running the function again
