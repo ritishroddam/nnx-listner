@@ -63,7 +63,11 @@ def atlantaStatusData():
     ]
     results = list(atlanta_collection.aggregate(pipeline))
     for doc in results:
-        status_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+        status_collection.update_one(
+            {"_id": doc["_id"]},
+            {"$set": doc},
+            upsert=True
+        )
 
 if __name__ == '__main__':
     while True:
