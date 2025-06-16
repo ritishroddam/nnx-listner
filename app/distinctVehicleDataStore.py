@@ -69,4 +69,4 @@ if __name__ == '__main__':
     while True:
         update_distinct_atlanta()
         atlantaStatusData()
-        time.sleep(60)  # Wait for 60 seconds before running the function again
+        time.sleep(10)  # Wait for 60 seconds before running the function again
