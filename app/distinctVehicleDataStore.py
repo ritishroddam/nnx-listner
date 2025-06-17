@@ -49,7 +49,7 @@ def atlantaStatusData():
     utc_now = datetime.now(timezone('UTC'))
     seven_days_ago = utc_now - timedelta(days=7)
     pipeline = [
-        {"$match": {"date_time": {"$gte": seven_days_ago}}},
+        {"$match": {"date_time": {"$gte": seven_days_ago, "$lte": utc_now}}},
         {"$sort": {"date_time": -1}},
         {"$group": {
             "_id": "$imei",
@@ -62,17 +62,12 @@ def atlantaStatusData():
         }},
     ]
     results = list(atlanta_collection.aggregate(pipeline))
-    for doc in results:
-        if doc['latest']['date_time'] < datetime.now(timezone('UTC')):
-            for doc_history in doc['history']:
-                if doc_history['date_time'] < datetime.now(timezone('UTC')):
-                    doc['history'].remove(doc_history)
-                    
-            status_collection.update_one(
-                {"_id": doc["_id"]},
-                {"$set": doc},
-                upsert=True
-            )
+    for doc in results:        
+        status_collection.update_one(
+            {"_id": doc["_id"]},
+            {"$set": doc},
+            upsert=True
+        )
 
 if __name__ == '__main__':
     while True:
