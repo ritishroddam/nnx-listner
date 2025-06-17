@@ -63,11 +63,16 @@ def atlantaStatusData():
     ]
     results = list(atlanta_collection.aggregate(pipeline))
     for doc in results:
-        status_collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": doc},
-            upsert=True
-        )
+        if doc['latest']['date_time'] < datetime.now(timezone('UTC')):
+            for doc_history in doc['history']:
+                if doc_history['date_time'] < datetime.now(timezone('UTC')):
+                    doc['history'].remove(doc_history)
+                    
+            status_collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": doc},
+                upsert=True
+            )
 
 if __name__ == '__main__':
     while True:
