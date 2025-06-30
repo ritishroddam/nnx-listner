@@ -24,6 +24,7 @@ distance_travelled_collection = db['distanceTravelled']
 vehicle_inventory_collection = db['vehicle_inventory']
 geoCodeCollection = db['geocoded_address']
 rawLogSubscriptions = db['raw_log_subscriptions']
+rawLogDataCollection = db['raw_log_data']
 
 gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
@@ -41,8 +42,7 @@ async def update_raw_log_list():
 
 def storRawData(imei, raw_data):
     try:
-        rawLogCollection = db['raw_log_data']
-        rawLogCollection.insert_one({
+        rawLogDataCollection.insert_one({
             'imei': imei,
             'raw_data': raw_data,
             'timestamp': datetime.now(timezone('UTC'))
