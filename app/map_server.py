@@ -13,6 +13,7 @@ import re
 client_activity = {}
 last_emit_time = {}
 comamandImeiList = []
+rawLogList = []
 
 mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
@@ -22,12 +23,33 @@ sos_logs_collection = db['sos_logs']
 distance_travelled_collection = db['distanceTravelled']
 vehicle_inventory_collection = db['vehicle_inventory']
 geoCodeCollection = db['geocoded_address']
+rawLogSubscriptions = db['raw_log_subscriptions']
 
 gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
 INACTIVITY_TIMEOUT = 600 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
+
+async def update_raw_log_list():
+    while True:
+        imeis = rawLogSubscriptions.distinct('imei')
+        for imei in imeis:
+            if imei not in rawLogList:
+                rawLogList.append(imei)
+        await asyncio.sleep(300)
+
+def storRawData(imei, raw_data):
+    try:
+        rawLogCollection = db['raw_log_data']
+        rawLogCollection.insert_one({
+            'imei': imei,
+            'raw_data': raw_data,
+            'timestamp': datetime.now(timezone('UTC'))
+        })
+        print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+    except Exception as e:
+        print(f"[DEBUG] Error storing raw data for IMEI {imei}: {e}")
 
 async def monitor_inactive_clients():
     while True:
@@ -205,13 +227,18 @@ def ensure_socket_connection():
         except Exception as e:
             print(f"Failed to reconnect to WebSocket server: {e}")
 
-def parse_json_data(data,status_prefix):
+def parse_json_data(data, status_prefix, raw_data):
     try:
         parts = data.split(',')
         expected_fields_count = 26
         if len(parts) >= expected_fields_count:
             binary_string = parts[14].strip('#')
             ignition, door, sos = '0', '0', '0'
+            
+            imei = clean_imei(parts[0])
+            if imei in rawLogList:
+                storRawData(imei, raw_data)
+                
             if len(binary_string) == 14:
                 ignition = binary_string[0]
                 door = binary_string[1]
@@ -295,8 +322,8 @@ def parse_json_data(data,status_prefix):
         print("Error parsing JSON data:", e)
         return None
 
-async def parse_and_process_data(data, status_prefix):
-    json_data = parse_json_data(data, status_prefix)
+async def parse_and_process_data(data, status_prefix, raw_data):
+    json_data = parse_json_data(data, status_prefix, raw_data)
     if json_data:
         sos_state = json_data.get('sos', '0')
         if sos_state == '1':
@@ -338,10 +365,8 @@ async def handle_client(reader, writer):
                     first_special_char = msg_bytes[first_special_index:first_special_index+1]
                     
                     status_prefix = first_special_char.hex()
-                    print(status_prefix)
                 except Exception as e:
                     print(f"[DEBUG] Error finding special characters in data: {e}")
-                    status_prefix = '00'
                     
                 try:
                     decoded_data = msg_bytes.decode('utf-8').strip()
@@ -349,7 +374,7 @@ async def handle_client(reader, writer):
                 except UnicodeDecodeError:
                     decoded_data = msg_bytes.decode('latin-1').strip()
                     print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                await parse_and_process_data(decoded_data, status_prefix)
+                await parse_and_process_data(decoded_data, status_prefix, data)
     except Exception as e:
         print(f"[DEBUG] Socket error with {addr}: {e}")
     finally:
@@ -375,6 +400,8 @@ async def main():
 
     # Start the inactivity monitor
     asyncio.create_task(monitor_inactive_clients())
+    
+    asyncio.create_task(update_raw_log_list())
 
     async with server:
         await server.serve_forever()
