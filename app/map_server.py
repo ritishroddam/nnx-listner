@@ -238,7 +238,7 @@ def ensure_socket_connection():
         except Exception as e:
             print(f"Failed to reconnect to WebSocket server: {e}")
 
-def parse_json_data(data, status_prefix, raw_data):
+def parse_json_data(data, status_prefix):
     try:
         parts = data.split(',')
         expected_fields_count = 26
@@ -331,8 +331,8 @@ def parse_json_data(data, status_prefix, raw_data):
         print("Error parsing JSON data:", e)
         return None
 
-async def parse_and_process_data(data, status_prefix, raw_data):
-    json_data = parse_json_data(data, status_prefix, raw_data)
+async def parse_and_process_data(data, status_prefix):
+    json_data = parse_json_data(data, status_prefix)
     if json_data:
         sos_state = json_data.get('sos', '0')
         if sos_state == '1':
@@ -385,7 +385,7 @@ async def handle_client(reader, writer):
                 except UnicodeDecodeError:
                     decoded_data = msg_bytes.decode('latin-1').strip()
                     print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                imei = await parse_and_process_data(decoded_data, status_prefix, data)
+                imei = await parse_and_process_data(decoded_data, status_prefix)
                 
             if imei in rawLogList:
                 storRawData(imei, data)
