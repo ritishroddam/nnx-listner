@@ -333,9 +333,6 @@ def parse_json_data(data, status_prefix, raw_data):
 
 async def parse_and_process_data(data, status_prefix, raw_data):
     json_data = parse_json_data(data, status_prefix, raw_data)
-    if json_data.get('imei') in rawLogList:
-        storRawData(json_data.get('imei'), raw_data)
-        print(f"[DEBUG] Stored raw data for IMEI: {json_data.get('imei')}")
     if json_data:
         sos_state = json_data.get('sos', '0')
         if sos_state == '1':
@@ -343,6 +340,8 @@ async def parse_and_process_data(data, status_prefix, raw_data):
         store_data_in_mongodb(json_data)
     else:
         print("[DEBUG] Invalid JSON format")
+    
+    return json_data.get('imei')
 
 def split_atlanta_messages(data):
     # Use regex to split on the control character + ATL + 15 digits
@@ -386,7 +385,11 @@ async def handle_client(reader, writer):
                 except UnicodeDecodeError:
                     decoded_data = msg_bytes.decode('latin-1').strip()
                     print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                await parse_and_process_data(decoded_data, status_prefix, data)
+                imei = await parse_and_process_data(decoded_data, status_prefix, data)
+                
+            if imei in rawLogList:
+                storRawData(imei, data)
+                print(f"[DEBUG] Stored raw data for IMEI: {imei}")
     except Exception as e:
         print(f"[DEBUG] Socket error with {addr}: {e}")
     finally:
