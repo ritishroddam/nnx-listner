@@ -236,8 +236,11 @@ def parse_json_data(data, status_prefix, raw_data):
             ignition, door, sos = '0', '0', '0'
             
             imei = clean_imei(parts[0])
+            print(f"[DEBUG] Processing data for IMEI: {imei}")
+            print(f"[DEBUG] Raw data: {rawLogList}")
             if imei in rawLogList:
                 storRawData(imei, raw_data)
+                print(f"[DEBUG] Stored raw data for IMEI: {imei}")
                 
             if len(binary_string) == 14:
                 ignition = binary_string[0]
