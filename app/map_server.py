@@ -40,7 +40,7 @@ async def update_raw_log_list():
         results = rawLogSubscriptions.find()
         for result in results:
             imei = result.get('IMEI', '').strip()
-            if imei and imei not in rawLogList:
+            if imei:
                 rawLogList.append(imei)
                 rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
         await asyncio.sleep(300)
