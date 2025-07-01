@@ -34,7 +34,7 @@ BEARING_DEGREES = 360 / len(DIRECTIONS)
 
 async def update_raw_log_list():
     while True:
-        imeis = rawLogSubscriptions.distinct('imei')
+        imeis = rawLogSubscriptions.distinct('IMEI')
         for imei in imeis:
             if imei not in rawLogList:
                 rawLogList.append(imei)
