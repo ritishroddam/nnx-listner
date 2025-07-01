@@ -34,10 +34,10 @@ DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
 
 async def update_raw_log_list():
-    rawLogList = []
     rawLogImeiLiscenceMap = {}
     while True:
         results = rawLogSubscriptions.find()
+        rawLogList = []
         for result in results:
             imei = result.get('IMEI', '').strip()
             if imei:
