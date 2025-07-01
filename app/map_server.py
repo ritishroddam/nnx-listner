@@ -49,6 +49,7 @@ def storRawData(imei, raw_data):
     try:
         try:
             # Replace '/' with '//' before decoding
+            print(type(raw_data))
             if isinstance(raw_data, bytes):
                 raw_data = raw_data.replace(b'/', b'//')
             raw_data = raw_data.decode('utf-8')
