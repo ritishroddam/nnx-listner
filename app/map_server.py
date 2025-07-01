@@ -386,7 +386,8 @@ async def handle_client(reader, writer):
                     decoded_data = msg_bytes.decode('latin-1').strip()
                     print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
                 imei = await parse_and_process_data(decoded_data, status_prefix)
-                
+            
+            print(imei)    
             if imei in rawLogList:
                 storRawData(imei, data)
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
