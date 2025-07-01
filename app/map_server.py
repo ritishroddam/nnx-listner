@@ -42,6 +42,11 @@ async def update_raw_log_list():
 
 def storRawData(imei, raw_data):
     try:
+        try:
+            raw_data = raw_data.decode('utf-8').strip()
+        except UnicodeDecodeError:
+            raw_data = raw_data.decode('latin-1').strip()
+            
         rawLogDataCollection.insert_one({
             'imei': imei,
             'raw_data': raw_data,
