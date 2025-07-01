@@ -35,6 +35,7 @@ BEARING_DEGREES = 360 / len(DIRECTIONS)
 
 async def update_raw_log_list():
     rawLogList = []
+    rawLogImeiLiscenceMap = {}
     while True:
         results = rawLogSubscriptions.find()
         for result in results:
