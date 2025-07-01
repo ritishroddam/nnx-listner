@@ -14,6 +14,7 @@ client_activity = {}
 last_emit_time = {}
 comamandImeiList = []
 rawLogList = []
+rawLogImeiLiscenceMap = {}
 
 mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
@@ -33,11 +34,14 @@ DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
 
 async def update_raw_log_list():
+    rawLogList = []
     while True:
-        imeis = rawLogSubscriptions.distinct('IMEI')
-        for imei in imeis:
-            if imei not in rawLogList:
+        results = rawLogSubscriptions.find()
+        for result in results:
+            imei = result.get('IMEI', '').strip()
+            if imei and imei not in rawLogList:
                 rawLogList.append(imei)
+                rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
         await asyncio.sleep(300)
 
 def storRawData(imei, raw_data):
@@ -48,6 +52,7 @@ def storRawData(imei, raw_data):
             raw_data = raw_data.decode('latin-1').strip()
             
         rawLogDataCollection.insert_one({
+            'LicensePlateNumber': rawLogImeiLiscenceMap.get(imei, 'Unknown'),
             'imei': imei,
             'raw_data': raw_data,
             'timestamp': datetime.now(timezone('UTC'))
