@@ -85,7 +85,7 @@ async def monitor_inactive_clients():
                 to_remove.append(addr)
         for addr in to_remove:
             client_activity.pop(addr, None)
-        await asyncio.sleep(60) 
+        await asyncio.sleep(60)
 
 def calculate_bearing(coord1, coord2):
     lat1, lon1 = radians(coord1[0]), radians(coord1[1])
