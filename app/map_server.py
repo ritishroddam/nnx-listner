@@ -400,7 +400,7 @@ async def handle_client(reader, writer):
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
             
             try:
-                ack_packet = b'CO?<6906>'
+                ack_packet = b'VERSION<6906>\r\n'
                 writer.write(ack_packet)
                 await writer.drain()
                 print(f"[DEBUG] Sent ACK to {addr}")
