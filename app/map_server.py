@@ -399,11 +399,14 @@ async def handle_client(reader, writer):
                 storRawData(imei, data)
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
             
-            message = b'#GPRSSTATUS<6906>'
-            with socket.create_connection(addr, timeout=5) as sock:
-                # Send the message
-                sock.sendall(message.encode())
-                print(f"Sent message: {message}")
+            try:
+                message = b'#GPRSSTATUS<6906>'
+                with socket.create_connection(addr, timeout=5) as sock:
+                    # Send the message
+                    sock.sendall(message.encode())
+                    print(f"Sent message: {message}")
+            except Exception as e:
+                print(f"[DEBUG] Error sending message to {addr}: {e}")
             
             try:
                 ack_packet = b'#GPRSSTATUS<6906>'
