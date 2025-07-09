@@ -9,6 +9,7 @@ from geopy.distance import geodesic
 import socketio
 from math import radians, sin, cos, atan2, degrees
 import re
+import socket
 
 client_activity = {}
 last_emit_time = {}
@@ -397,6 +398,12 @@ async def handle_client(reader, writer):
             if imei in rawLogList:
                 storRawData(imei, data)
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+            
+            message = b'#GPRSSTATUS<6906>'
+            with socket.create_connection(addr, timeout=5) as sock:
+                # Send the message
+                sock.sendall(message.encode())
+                print(f"Sent message: {message}")
             
             try:
                 ack_packet = b'#GPRSSTATUS<6906>'
