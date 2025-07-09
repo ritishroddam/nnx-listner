@@ -48,11 +48,9 @@ async def update_raw_log_list():
 def storRawData(imei, raw_data):
     try:
         try:
-            if isinstance(raw_data, bytes):
-                raw_data = raw_data.decode('utf-8', errors='surrogateescape')
+            raw_data = raw_data.decode('utf-8', errors='surrogateescape')
         except UnicodeDecodeError:
-            if isinstance(raw_data, bytes):
-                raw_data = raw_data.decode('latin-1', errors='surrogateescape')
+            raw_data = raw_data.decode('latin-1', errors='surrogateescape')
             
         rawLogDataCollection.insert_one({
             'LicensePlateNumber': rawLogImeiLiscenceMap.get(imei, 'Unknown'),
