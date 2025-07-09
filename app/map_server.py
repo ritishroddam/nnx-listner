@@ -51,7 +51,9 @@ def storRawData(imei, raw_data):
             raw_data = raw_data.decode('utf-8', errors='surrogateescape')
         except UnicodeDecodeError:
             raw_data = raw_data.decode('latin-1', errors='surrogateescape')
-            
+        
+        raw_data = raw_data.encode('unicode_escape').decode('ascii')
+        
         rawLogDataCollection.insert_one({
             'LicensePlateNumber': rawLogImeiLiscenceMap.get(imei, 'Unknown'),
             'imei': imei,
