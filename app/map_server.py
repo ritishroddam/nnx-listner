@@ -400,10 +400,10 @@ async def handle_client(reader, writer):
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
             
             try:
-                ack_packet = b'VERSION<6906>\r\n'
+                ack_packet = b'GPRSSTATUS<6906>\r\n'
                 writer.write(ack_packet)
                 await writer.drain()
-                print(f"[DEBUG] Sent ACK to {addr}")
+                print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
             except Exception as e:
                 print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
 
