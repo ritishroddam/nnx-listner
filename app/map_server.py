@@ -363,6 +363,9 @@ async def handle_client(reader, writer):
     try:
         while True:
             data = await reader.read(4096)
+            
+            print(f"[DEBUG] Received data from {addr}: {data!r}")
+            
             if not data:
                 print(f"[DEBUG] Client {addr} disconnected gracefully.")
                 break
@@ -394,6 +397,15 @@ async def handle_client(reader, writer):
             if imei in rawLogList:
                 storRawData(imei, data)
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+            
+            try:
+                ack_packet = b'ACK\n'
+                writer.write(ack_packet)
+                await writer.drain()
+                print(f"[DEBUG] Sent ACK to {addr}")
+            except Exception as e:
+                print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
+
     except Exception as e:
         print(f"[DEBUG] Socket error with {addr}: {e}")
     finally:
