@@ -371,18 +371,6 @@ async def handle_client(reader, writer):
                 print(f"[DEBUG] Client {addr} disconnected gracefully.")
                 break
             # Update last seen time
-            # Extract IMEI from the message and save to variable imei
-            try:
-                # Try to extract IMEI (15 digits) after 'ATL'
-                imei_match = re.search(rb'ATL(\d{15})', data)
-                if imei_match:
-                    imei = imei_match.group(1).decode('utf-8', errors='ignore')
-                else:
-                    imei = None
-            except Exception as e:
-                print(f"[DEBUG] Error extracting IMEI: {e}")
-                imei = None
-            print(f"[DEBUG] Received data from {imei} {addr} at {datetime.now()}")
             client_activity[addr]['last_seen'] = datetime.now()
             # Split the raw bytes into individual messages
             for msg_bytes in split_atlanta_messages(data):
