@@ -382,7 +382,7 @@ async def handle_client(reader, writer):
             except Exception as e:
                 print(f"[DEBUG] Error extracting IMEI: {e}")
                 imei = None
-            print(f"[DEBUG] Received data from {imei} {addr} at {datetime.now()}: {data}")
+            print(f"[DEBUG] Received data from {imei} {addr} at {datetime.now()}")
             client_activity[addr]['last_seen'] = datetime.now()
             # Split the raw bytes into individual messages
             for msg_bytes in split_atlanta_messages(data):
