@@ -1,21 +1,28 @@
-import asyncio
+
+import eventlet
+import threading
+import socketserver
+import json
 from datetime import datetime, timedelta
 from pytz import timezone
 import os
 from pymongo import MongoClient
-import ssl
-import googlemaps
-from geopy.distance import geodesic
+from flask import Flask, render_template, jsonify, request
+import signal
+import sys
+from datetime import datetime
+from flask_cors import CORS
+from math import radians, sin, cos, sqrt, atan2
 import socketio
-from math import radians, sin, cos, atan2, degrees
-import re
-import socket
-
-client_activity = {}
-last_emit_time = {}
-comamandImeiList = []
-rawLogList = []
-rawLogImeiLiscenceMap = {}
+import eventlet.wsgi
+import time
+from pymongo import MongoClient
+import ssl
+from geopy.distance import geodesic
+from math import atan2, degrees, radians, sin, cos
+import googlemaps
+from pymongo import ASCENDING
+import asyncio
 
 mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
@@ -28,23 +35,21 @@ geoCodeCollection = db['geocoded_address']
 rawLogSubscriptions = db['raw_log_subscriptions']
 rawLogDataCollection = db['raw_log_data']
 
+rawLogList = []
+rawLogImeiLiscenceMap = {}
+
+app = Flask(__name__)
+CORS(app)
+
+last_emit_time = {}
+comamandImeiList = []
+
 gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
-INACTIVITY_TIMEOUT = 600 
+# Create compound index for fast queries
+
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
-
-async def update_raw_log_list():
-    while True:
-        results = rawLogSubscriptions.find()
-        rawLogList.clear()
-        rawLogImeiLiscenceMap.clear() 
-        for result in results:
-            imei = result.get('IMEI', '').strip()
-            if imei:
-                rawLogList.append(imei)
-                rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
-        await asyncio.sleep(300)
 
 def storRawData(imei, raw_data):
     try:
@@ -65,24 +70,21 @@ def storRawData(imei, raw_data):
     except Exception as e:
         print(f"[DEBUG] Error storing raw data for IMEI {imei}: {e}")
 
-async def monitor_inactive_clients():
+async def update_raw_log_list():
     while True:
-        now = datetime.now()
-        to_remove = []
-        for addr, info in list(client_activity.items()):
-            last_seen = info['last_seen']
-            writer = info['writer']
-            if (now - last_seen).total_seconds() > INACTIVITY_TIMEOUT:
-                print(f"[DEBUG] Disconnecting inactive client {addr}")
-                try:
-                    writer.close()
-                    await writer.wait_closed()
-                except Exception as e:
-                    print(f"[DEBUG] Error closing writer for {addr}: {e}")
-                to_remove.append(addr)
-        for addr in to_remove:
-            client_activity.pop(addr, None)
-        await asyncio.sleep(60)
+        try:
+            results = rawLogSubscriptions.find()
+            rawLogList.clear()
+            rawLogImeiLiscenceMap.clear()
+            for result in results:
+                imei = result.get('IMEI', '').strip()
+                if imei:
+                    rawLogList.append(imei)
+                    rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
+            print("[DEBUG] Updated rawLogImeiLiscenceMap and rawLogList")
+        except Exception as e:
+            print(f"[DEBUG] Error updating raw log list: {e}")
+        await asyncio.sleep(300)
 
 def calculate_bearing(coord1, coord2):
     lat1, lon1 = radians(coord1[0]), radians(coord1[1])
@@ -96,18 +98,23 @@ def calculate_bearing(coord1, coord2):
 def validate_coordinates(lat, lng):
     if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
         raise ValueError(f"Invalid coordinates {lat} and {lng}")
-
+    
 def nmea_to_decimal(nmea_value):
+    # Check if the string has a leading zero that should be removed
     nmea_value = str(nmea_value)
+
+    # Extract degrees and minutes
     if '.' in nmea_value:
         dot_index = nmea_value.index('.')
-        degrees = float(nmea_value[:dot_index - 2])
-        minutes = float(nmea_value[dot_index - 2:])
+        degrees = float(nmea_value[:dot_index - 2])  # All characters before the last two digits before the dot
+        minutes = float(nmea_value[dot_index - 2:])  # Last two digits before the dot and everything after
     else:
         raise ValueError("Invalid NMEA format")
+    
+    # Convert to decimal degrees
     decimal_degrees = degrees + (minutes / 60.0)
     return decimal_degrees
-
+    
 def geocodeInternal(lat,lng):
     try:
         lat = float(lat)
@@ -118,36 +125,50 @@ def geocodeInternal(lat,lng):
         return "Invalid coordinates"
 
     try:
+        # Step 1: Fast bounding box filter (0.5km range)
         nearby_entries = geoCodeCollection.find({
             "lat": {"$gte": lat - 0.0045, "$lte": lat + 0.0045},
             "lng": {"$gte": lng - 0.0045, "$lte": lng + 0.0045}
         })
+
+        # Step 2: Precise distance calculation
         nearest_entry = None
-        min_distance = 0.5
+        min_distance = 0.5  # Max search radius in km
+        
         for entry in nearby_entries:
             saved_coord = (entry['lat'], entry['lng'])
             current_coord = (lat, lng)
             distance = geodesic(saved_coord, current_coord).km
+            
             if distance <= min_distance:
                 nearest_entry = entry
                 min_distance = distance
+
         if nearest_entry:
             saved_coord = (nearest_entry['lat'], nearest_entry['lng'])
             current_coord = (lat, lng)
             bearing = calculate_bearing(saved_coord, current_coord)
+            
             return (f"{min_distance:.2f} km {bearing} from {nearest_entry['address']}"
                       if min_distance > 0 else nearest_entry['address'])
+
+        # Step 3: Geocode new coordinates
         reverse_geocode_result = gmaps.reverse_geocode((lat, lng))
         if not reverse_geocode_result:
             print("Geocoding API failed")
             return "Address unavailable"
+
         address = reverse_geocode_result[0]['formatted_address']
+        
+        # Step 4: Insert new entry
         geoCodeCollection.insert_one({
             'lat': lat,
             'lng': lng,
             'address': address
         })
+
         return address
+
     except Exception as e:
         print(f"Geocoding error: {str(e)}", exc_info=True)
         return "Error retrieving address"
@@ -164,73 +185,26 @@ def lastEmitInitial():
         },
         {"$replaceRoot": {"newRoot": "$latest_doc"}}
     ]))
+
     for doc in all_documents:
         last_emit_time[doc['imei']] = doc['date_time']
 
-def clean_imei(imei):
-    return imei[-15:]
+sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed certs
 
-def clean_cellid(cellid):
-    return cellid[:5]
+server_url = "https://cordonnx.com" 
+cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")  
 
-def should_emit(imei, date_time):
-    if imei not in last_emit_time or date_time - last_emit_time[imei] > timedelta(seconds=1):
-        last_emit_time[imei] = date_time
-        return True
-    return False
+ssl_context = ssl.create_default_context(cafile=cert_path)
 
-def convert_to_datetime(date_str: str, time_str: str) -> datetime:
-    dt_str = date_str + time_str
-    dt_obj = datetime.strptime(dt_str, "%d%m%y%H%M%S")
-    return dt_obj
-
-def store_data_in_mongodb(json_data):
-    try:
-        result = collection.insert_one(json_data)
-        ensure_socket_connection()
-        if json_data['gps'] == 'A' and json_data['status'] == '01' and should_emit(json_data['imei'],json_data['date_time']):
-            json_data['_id'] = str(json_data['_id'])
-            json_data['date_time'] = str(json_data['date_time'])
-            json_data['timestamp'] = str(json_data['timestamp'])
-            inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
-            if inventory_data:
-                json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
-                json_data['VehicleType'] = inventory_data.get('vehicle_type', 'Unknown')
-                json_data['slowSpeed'] = float(inventory_data.get('slowSpeed', "0") or 40.0)
-                json_data['normalSpeed'] = float(inventory_data.get('normalSpeed', "0") or 60.0)
-            else:
-                json_data['LicensePlateNumber'] = 'Unknown'
-                json_data['VehicleType'] = 'Unknown'
-                json_data['slowSpeed'] = 40.0
-                json_data['normalSpeed'] = 60.0
-            json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
-            if sio.connected:
-                try:
-                    sio.emit('vehicle_live_update', json_data)
-                    sio.emit('vehicle_update', json_data)
-                except Exception as e:
-                    print("Error emitting data to WebSocket:", e)
-    except Exception as e:
-        print("Error storing data in MongoDB:", e)
-
-def log_sos_to_mongodb(json_data):
-    try:
-        sos_log = {
-            'imei': json_data['imei'],
-            'date': json_data['date'],
-            'time': json_data['time'],
-            'latitude': json_data['latitude'],
-            'longitude': json_data['longitude'],
-            'date_time': json_data['date_time'],
-            'timestamp': json_data['timestamp'],
-        }
-        sos_logs_collection.insert_one(sos_log)
-    except Exception as e:
-        print("Error logging SOS alert to MongoDB:", e)
+try:
+    sio.connect(server_url, transports=['websocket'])
+    print("Connected to WebSocket server successfully!")
+except Exception as e:
+    print(f"Failed to connect to WebSocket server: {e}")
 
 def ensure_socket_connection():
+    """Ensure the socket is connected, and reconnect if necessary."""
     if not sio.connected:
-        print("[DEBUG] Socket not connected, reconnecting...")
         try:
             sio.disconnect()
         except Exception:
@@ -241,203 +215,305 @@ def ensure_socket_connection():
         except Exception as e:
             print(f"Failed to reconnect to WebSocket server: {e}")
 
-def parse_json_data(data, status_prefix):
-    try:
-        parts = data.split(',')
-        expected_fields_count = 26
-        if len(parts) >= expected_fields_count:
-            binary_string = parts[14].strip('#')
-            ignition, door, sos = '0', '0', '0'
-            
-            imei = clean_imei(parts[0])
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+
+    def __init__(self, server_address, handler_cls):
+        super().__init__(server_address, handler_cls)
+        self.shutdown_event = threading.Event()
+
+    def server_close(self):
+        super().server_close()
+
+class MyTCPHandler(socketserver.BaseRequestHandler):
+
+    lock = threading.Lock()
+    sos_active = False
+    sos_alert_triggered = False
+    status_prefix = ""
+
+    @staticmethod
+    def clean_imei(imei):
+    # Extract the last 15 characters of the IMEI
+        return imei[-15:]
+    
+    @staticmethod
+    def clean_cellid(cellid):
+        return cellid[:5]
+    
+    def should_emit(imei, date_time):
+        if imei not in last_emit_time or date_time - last_emit_time[imei] > timedelta(seconds=1):
+            last_emit_time[imei] = date_time
+            return True
+        return False
+    
+    def convert_to_datetime(date_str: str, time_str: str) -> datetime:
+    # Parse the date and time components
+        dt_str = date_str + time_str  # Combine both
+        dt_obj = datetime.strptime(dt_str, "%d%m%y%H%M%S")  # Convert to datetime object
+        return dt_obj
+
+    def handle(self):
+        receive_data = self.request.recv(4096)
+        try:
+            try:
+                index_03 = receive_data.find(b'\x03')  # Finds first occurrence of \x03
+                index_01 = receive_data.find(b'\x01')  # Finds first occurrence of \x01
+
+                # Get the first occurring special character
+                first_special_index = min(i for i in [index_03, index_01] if i != -1)
+                first_special_char = receive_data[first_special_index:first_special_index+1]
+
+                self.status_prefix = first_special_char.hex()
+
+                data = receive_data.decode('utf-8').strip()
+            except UnicodeDecodeError:
+                data = receive_data.decode('latin-1').strip()
+                # print("Received raw data:", data)
+
+            json_data = self.parse_json_data(data)
+            if json_data:
+                # print("Valid JSON data:", json_data)
+
+                sos_state = json_data.get('sos', '0')
+                # print(f"SOS state received: {sos_state}")
+
+                with MyTCPHandler.lock:
+                    if sos_state == '1':
+                        self.log_sos_to_mongodb(json_data)
+
+                self.store_data_in_mongodb(json_data)
+            else:
+                print("Invalid JSON format")
+                time.sleep(0.005)
+
+        except Exception as e:
+            print("Error handling request:", e)
+            try:
+                error_data = receive_data.decode('utf-8', errors='replace').strip()
+                print("Error data:", error_data, e)
+                time.sleep(0.005)
+            except Exception as e:
+                print("Error decoding data.", e)
+                time.sleep(0.005)
+
+    def parse_json_data(self, data):
+        try:
+            parts = data.split(',')
+            # print(f"Parsed data parts: {parts}")
+            expected_fields_count = 35
+
+            if len(parts) >= expected_fields_count:
+
+                binary_string = parts[14].strip('#')
+                # print(f"Binary string: {binary_string}")
+
+                ignition, door, sos = '0', '0', '0'
+
+                if len(binary_string) == 14:
+                    ignition = binary_string[0]
+                    door = binary_string[1]
+                    sos = binary_string[2]
+                    reserve1 = binary_string[3]
+                    reserve2 = binary_string[4]
+                    ac = binary_string[5]
+                    reserve3 = binary_string[6]
+                    main_power = binary_string[7]
+                    harsh_speed = binary_string[8]
+                    harsh_break = binary_string[9]
+                    arm = binary_string[10]
+                    sleep = binary_string[11]
+                    reserve4 = binary_string[12]
+                    status_accelerometer = binary_string[13]
+                else:
+                    print(f"Received data does not contain at least {expected_fields_count} fields.")
+                    return None
+
+                latitude = str(nmea_to_decimal(parts[4])) if parts[4] != '-' else ''
+                longitude = str(nmea_to_decimal(parts[6])) if parts[6] != '-' else ''
+
+                speed_mph = float(parts[8]) if parts[8].replace('.', '', 1).isdigit() else 0.0
+                speed_kmph = round(speed_mph * 1.60934, 2)
+
+                status = parts[0]
+                status_prefix = status[:-15] if len(status) > 15 else ''
+
+                ist = timezone('Asia/Kolkata')
+
+                date_time_str = f"{parts[10]} {parts[2]}"
+                date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
+                date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
+                date_time = date_time_ist.astimezone(timezone('UTC'))
                 
-            if len(binary_string) == 14:
-                ignition = binary_string[0]
-                door = binary_string[1]
-                sos = binary_string[2]
-                reserve1 = binary_string[3]
-                reserve2 = binary_string[4]
-                ac = binary_string[5]
-                reserve3 = binary_string[6]
-                main_power = binary_string[7]
-                harsh_speed = binary_string[8]
-                harsh_break = binary_string[9]
-                arm = binary_string[10]
-                sleep = binary_string[11]
-                reserve4 = binary_string[12]
-                status_accelerometer = binary_string[13]
+                # imei = self.clean_imei(parts[0])
+                # conn = self.request
+                # command = "#SERVERCHANGE::gps.cordonnx.com::8000;<6906>"
+                # if imei not in comamandImeiList:
+                #     if conn:
+                #         try:
+                #             conn.sendall(command.encode('utf-8'))
+                #             print("Sent command to client:", imei)
+                #             comamandImeiList.append(imei)
+                #         except Exception as e:
+                #             print("Error sending command to client:", e)
+                
+                imei = self.clean_imei(parts[0])
+                if imei in rawLogList:
+                    storRawData(imei, data)
+                    print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+                
+                json_data = {
+                    'status': self.status_prefix,
+                    'imei': self.clean_imei(parts[0]),
+                    'header': parts[1],
+                    'time': parts[2],
+                    'gps': parts[3],
+                    'latitude': latitude,
+                    'dir1': parts[5],
+                    'longitude': longitude,
+                    'dir2': parts[7],
+                    'speed': str(speed_kmph),
+                    'course': parts[9],
+                    'date': parts[10],
+                    'checksum': parts[13] if len(parts) > 13 else '0',
+                    'ignition': ignition,
+                    'door': door,
+                    'sos': sos,
+                    'reserve1': reserve1,
+                    'reserve2': reserve2,
+                    'ac': ac,
+                    'reserve3': reserve3,
+                    'main_power': main_power,
+                    'harsh_speed': harsh_speed,
+                    'harsh_break': harsh_break,
+                    'arm': arm,
+                    'sleep': sleep,
+                    'reserve4': reserve4,
+                    'status_accelerometer': status_accelerometer,
+                    'adc_voltage': parts[15],
+                    'one_wire_temp': parts[16],
+                    'i_btn': parts[17],
+                    'odometer': parts[18],
+                    'onBoard_temp': parts[19],
+                    'internal_bat': parts[20],
+                    'gsm_sig': parts[21],
+                    'mobCountryCode': parts[22],
+                    'mobNetworkCode': parts[23],
+                    'localAreaCode': parts[24],
+                    'cellid':  self.clean_cellid(parts[25]),  
+                    'date_time': date_time,
+                    'timestamp': datetime.now(timezone('UTC'))     
+                }
+                return json_data
             else:
                 print(f"Received data does not contain at least {expected_fields_count} fields.")
                 return None
-            if parts[3] != 'A':
-                latitude = ''
-                longitude = ''
-            else:
-                latitude = str(nmea_to_decimal(parts[4])) if parts[4] != '-' else ''
-                longitude = str(nmea_to_decimal(parts[6])) if parts[6] != '-' else ''
-            speed_mph = float(parts[8]) if parts[8].replace('.', '', 1).isdigit() else 0.0
-            speed_kmph = round(speed_mph * 1.60934, 2)
-            status = parts[0]
-            ist = timezone('Asia/Kolkata')
-            date_time_str = f"{parts[10]} {parts[2]}"
-            date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
-            date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
-            date_time = date_time_ist.astimezone(timezone('UTC'))
-            print(status_prefix)
-            json_data = {
-                'status': status_prefix,
-                'imei': clean_imei(parts[0]),
-                'header': parts[1],
-                'time': parts[2],
-                'gps': parts[3],
-                'latitude': latitude,
-                'dir1': parts[5],
-                'longitude': longitude,
-                'dir2': parts[7],
-                'speed': str(speed_kmph),
-                'course': parts[9],
-                'date': parts[10],
-                'checksum': parts[13] if len(parts) > 13 else '0',
-                'ignition': ignition,
-                'door': door,
-                'sos': sos,
-                'reserve1': reserve1,
-                'reserve2': reserve2,
-                'ac': ac,
-                'reserve3': reserve3,
-                'main_power': main_power,
-                'harsh_speed': harsh_speed,
-                'harsh_break': harsh_break,
-                'arm': arm,
-                'sleep': sleep,
-                'reserve4': reserve4,
-                'status_accelerometer': status_accelerometer,
-                'adc_voltage': parts[15],
-                'one_wire_temp': parts[16],
-                'i_btn': parts[17],
-                'odometer': parts[18],
-                'onBoard_temp': parts[19],
-                'internal_bat': parts[20],
-                'gsm_sig': parts[21],
-                'mobCountryCode': parts[22],
-                'mobNetworkCode': parts[23],
-                'localAreaCode': parts[24],
-                'cellid':  clean_cellid(parts[25]),  
-                'date_time': date_time,
-                'timestamp': datetime.now(timezone('UTC'))     
-            }
-            return json_data
-        else:
-            print(f"Received data does not contain at least {expected_fields_count} fields.")
+
+        except Exception as e:
+            print("Error parsing JSON data:", e)
             return None
-    except Exception as e:
-        print("Error parsing JSON data:", e)
-        return None
-
-async def parse_and_process_data(data, status_prefix):
-    json_data = parse_json_data(data, status_prefix)
-    if json_data:
-        sos_state = json_data.get('sos', '0')
-        if sos_state == '1':
-            log_sos_to_mongodb(json_data)
-        store_data_in_mongodb(json_data)
-    else:
-        print("[DEBUG] Invalid JSON format")
     
-    return json_data.get('imei')
+    def store_data_in_mongodb(self, json_data):
+        try:
+            result = collection.insert_one(json_data)
 
-def split_atlanta_messages(data):
-    # Use regex to split on the control character + ATL + 15 digits
-    pattern = rb'([\x00-\x0F]ATL\d{15})'
-    matches = list(re.finditer(pattern, data))
-    messages = []
-    for i, match in enumerate(matches):
-        start = match.start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(data)
-        messages.append(data[start:end])
-    return messages
+            ensure_socket_connection()
 
-async def handle_client(reader, writer):
-    addr = writer.get_extra_info('peername')
-    print(f"[DEBUG] Connection established with {addr}")
-    client_activity[addr] = {'last_seen': datetime.now(), 'writer': writer}
+            if json_data['gps'] == 'A' and MyTCPHandler.should_emit(json_data['imei'],json_data['date_time']):
+                json_data['_id'] = str(json_data['_id'])
+                json_data['date_time'] = str(json_data['date_time'])
+                json_data['timestamp'] = str(json_data['timestamp'])
+                inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
+                if inventory_data:
+                    json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
+                    json_data['VehicleType'] = inventory_data.get('vehicle_type', 'Unknown')
+                    json_data['slowSpeed'] = float(inventory_data.get('slowSpeed', "0") or 40.0)
+                    json_data['normalSpeed'] = float(inventory_data.get('normalSpeed', "0") or 60.0)
+                else:
+                    json_data['LicensePlateNumber'] = 'Unknown'
+                    json_data['VehicleType'] = 'Unknown'
+                    json_data['slowSpeed'] = 40.0
+                    json_data['normalSpeed'] = 60.0
+                json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
+
+                if sio.connected:
+                    try:
+                        sio.emit('vehicle_live_update', json_data)
+                        sio.emit('vehicle_update', json_data)
+                    except Exception as e:
+                        print("Error emitting data to WebSocket:", e)
+                        time.sleep(0.0005)
+        except Exception as e:
+            print("Error storing data in MongoDB:", e)
+
+
+    def log_sos_to_mongodb(self, json_data):
+        try:
+            sos_log = {
+                'imei': json_data['imei'],
+                'date': json_data['date'],
+                'time': json_data['time'],
+                'latitude': json_data['latitude'],
+                'longitude': json_data['longitude'],
+                'date_time': json_data['date_time'],
+                'timestamp': json_data['timestamp'],
+            }
+            sos_logs_collection.insert_one(sos_log)
+        except Exception as e:
+            print("Error logging SOS alert to MongoDB:", e)
+
+def log_data(json_data):
     try:
-        while True:
-            data = await reader.read(4096)
-            
-            print(f"[DEBUG] Received data from {addr}: {data!r}")
-            
-            if not data:
-                print(f"[DEBUG] Client {addr} disconnected gracefully.")
-                break
-            # Update last seen time
-            client_activity[addr]['last_seen'] = datetime.now()
-            # Split the raw bytes into individual messages
-            for msg_bytes in split_atlanta_messages(data):
-                try:
-                    index_03 = msg_bytes.find(b'\x03')
-                    index_01 = msg_bytes.find(b'\x01')
-                    
-                    first_special_index = min(i for i in [index_03, index_01] if i != -1)
-                    first_special_char = msg_bytes[first_special_index:first_special_index+1]
-                    
-                    status_prefix = first_special_char.hex()
-                except Exception as e:
-                    print(f"[DEBUG] Error finding special characters in data: {e}")
-                    
-                try:
-                    decoded_data = msg_bytes.decode('utf-8').strip()
-                    print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
-                except UnicodeDecodeError:
-                    decoded_data = msg_bytes.decode('latin-1').strip()
-                    print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                imei = await parse_and_process_data(decoded_data, status_prefix)
-            
-            print(imei)    
-            print(rawLogList)
-            if imei in rawLogList:
-                storRawData(imei, data)
-                print(f"[DEBUG] Stored raw data for IMEI: {imei}")
-            
-            try:
-                ack_packet = '$MSG,GETGPS<6906>&'
-                writer.write(ack_packet.encode('utf-8'))
-                await writer.drain()
-                print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
-            except Exception as e:
-                print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
-
+        log_entry = {
+            'imei': json_data['imei'],
+            'latitude': json_data['latitude'],
+            'longitude': json_data['longitude'],
+            'speed': json_data.get('speed', '0'),
+            'timestamp': datetime.now()
+        }
+        db['logs'].insert_one(log_entry)  # Store logs in 'logs' collection
+        # print("Log stored in MongoDB:", log_entry)
     except Exception as e:
-        print(f"[DEBUG] Socket error with {addr}: {e}")
-    finally:
-        # Remove client from activity tracking and close writer
-        client_activity.pop(addr, None)
-        writer.close()
-        await writer.wait_closed()
+        print("Error logging data to MongoDB:", e)
+
+def run_servers():
+    HOST = "0.0.0.0"
+    PORT = 8000
+    server = ThreadedTCPServer((HOST, PORT), MyTCPHandler)
+    print(f"Starting TCP Server @ IP: {HOST}, port: {PORT}")
+
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    print("Server running. Press Ctrl+C to stop.")
+    while True:
+        try:
+            signal.pause()
+        except KeyboardInterrupt:
+            print("Server shutting down...")
+            server.shutdown()
+            server.server_close()
+            sys.exit(0)
+
+def signal_handler(signal, frame):
+    print("Received signal:", signal)
+    sys.exit(0)
 
 async def main():
-    global sio, server_url, ssl_context
-    sio = socketio.Client(ssl_verify=False)
-    server_url = "https://cordonnx.com"
-    cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")
-    ssl_context = ssl.create_default_context(cafile=cert_path)
-    try:
-        sio.connect(server_url, transports=['websocket'])
-        print("[DEBUG] Connected to WebSocket server successfully!")
-    except Exception as e:
-        print(f"[DEBUG] Failed to connect to WebSocket server: {e}")
-
-    server = await asyncio.start_server(handle_client, '0.0.0.0', 8000)
-    print(f"[DEBUG] Listening for connections on port 8000...")
-
-    # Start the inactivity monitor
-    asyncio.create_task(monitor_inactive_clients())
-    
+    # Schedule the update_raw_log_list function to run every 5 minutes
     asyncio.create_task(update_raw_log_list())
 
-    async with server:
-        await server.serve_forever()
-
 if __name__ == "__main__":
-    print("[DEBUG] __main__ entrypoint")
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+        lastEmitInitial()
+        run_servers()
+    except Exception as e:
+        import traceback
+        with open("fatal_error.log", "w") as f:
+            f.write(traceback.format_exc())
+        print("Fatal error occurred, see fatal_error.log")

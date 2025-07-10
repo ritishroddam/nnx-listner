@@ -22,6 +22,7 @@ from geopy.distance import geodesic
 from math import atan2, degrees, radians, sin, cos
 import googlemaps
 from pymongo import ASCENDING
+import asyncio
 
 mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
@@ -31,6 +32,11 @@ sos_logs_collection = db['sos_logs']
 distance_travelled_collection = db['distanceTravelled']
 vehicle_inventory_collection = db['vehicle_inventory']
 geoCodeCollection = db['geocoded_address']
+rawLogSubscriptions = db['raw_log_subscriptions']
+rawLogDataCollection = db['raw_log_data']
+
+rawLogList = []
+rawLogImeiLiscenceMap = {}
 
 app = Flask(__name__)
 CORS(app)
@@ -44,6 +50,41 @@ gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
+
+def storRawData(imei, raw_data):
+    try:
+        try:
+            raw_data = raw_data.decode('utf-8')
+        except UnicodeDecodeError:
+            raw_data = raw_data.decode('latin-1')
+        
+        raw_data = raw_data.encode('unicode_escape').decode('ascii')
+        
+        rawLogDataCollection.insert_one({
+            'LicensePlateNumber': rawLogImeiLiscenceMap.get(imei, 'Unknown'),
+            'imei': imei,
+            'raw_data': raw_data,
+            'timestamp': datetime.now(timezone('UTC'))
+        })
+        print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+    except Exception as e:
+        print(f"[DEBUG] Error storing raw data for IMEI {imei}: {e}")
+
+async def update_raw_log_list():
+    while True:
+        try:
+            results = rawLogSubscriptions.find()
+            rawLogList.clear()
+            rawLogImeiLiscenceMap.clear()
+            for result in results:
+                imei = result.get('IMEI', '').strip()
+                if imei:
+                    rawLogList.append(imei)
+                    rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
+            print("[DEBUG] Updated rawLogImeiLiscenceMap and rawLogList")
+        except Exception as e:
+            print(f"[DEBUG] Error updating raw log list: {e}")
+        await asyncio.sleep(300)
 
 def calculate_bearing(coord1, coord2):
     lat1, lon1 = radians(coord1[0]), radians(coord1[1])
@@ -316,6 +357,11 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 #         except Exception as e:
                 #             print("Error sending command to client:", e)
                 
+                imei = self.clean_imei(parts[0])
+                if imei in rawLogList:
+                    storRawData(imei, data)
+                    print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+                
                 json_data = {
                     'status': self.status_prefix,
                     'imei': self.clean_imei(parts[0]),
@@ -457,8 +503,13 @@ def signal_handler(signal, frame):
     print("Received signal:", signal)
     sys.exit(0)
 
+async def main():
+    # Schedule the update_raw_log_list function to run every 5 minutes
+    asyncio.create_task(update_raw_log_list())
+
 if __name__ == "__main__":
     try:
+        asyncio.run(main())
         lastEmitInitial()
         run_servers()
     except Exception as e:
