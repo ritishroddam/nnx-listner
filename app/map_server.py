@@ -400,7 +400,7 @@ async def handle_client(reader, writer):
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
             
             try:
-                ack_packet = '$MSG,GETGPS;<6906>&'
+                ack_packet = '$MSG,GETGPS<6906>&'
                 writer.write(ack_packet.encode('utf-8'))
                 await writer.drain()
                 print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
