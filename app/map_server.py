@@ -438,7 +438,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 
             try:
                 ack_packet = '$MSG,FE<6906>&'
-                self.request.sendall(ack_packet.encode('utf-8')) # Use self.request.sendall
+                self.request.sendall(ack_packet.encode('utf-8'))
                 print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
             except Exception as e:
                 print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
