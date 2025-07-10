@@ -271,7 +271,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 data = receive_data.decode('latin-1').strip()
                 # print("Received raw data:", data)
 
-            json_data = self.parse_json_data(data)
+            json_data = self.parse_json_data(data,receive_data)
             if json_data:
                 # print("Valid JSON data:", json_data)
 
@@ -297,7 +297,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 print("Error decoding data.", e)
                 time.sleep(0.005)
 
-    def parse_json_data(self, data):
+    def parse_json_data(self, data, receive_data):
         try:
             parts = data.split(',')
             # print(f"Parsed data parts: {parts}")
@@ -359,8 +359,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 
                 imei = self.clean_imei(parts[0])
                 if imei in rawLogList:
-                    storRawData(imei, data)
-                    print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+                    storRawData(imei, receive_data)
+                    print(f"[DEBUG] Stored raw data for IMEI: {imei} \n {receive_data}")
                 
                 json_data = {
                     'status': self.status_prefix,
