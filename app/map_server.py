@@ -436,12 +436,12 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 storRawData(imei, receive_data)
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
                 
-            try:
-                ack_packet = '$MSG,GETGPS<6906>&'
-                self.request.sendall(ack_packet.encode('utf-8')) # Use self.request.sendall
-                print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
-            except Exception as e:
-                print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
+            # try:
+            #     ack_packet = '$MSG,GETGPS<6906>&'
+            #     self.request.sendall(ack_packet.encode('utf-8')) # Use self.request.sendall
+            #     print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
+            # except Exception as e:
+            #     print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
 
         except Exception as e:
             print(f"[DEBUG] Socket error with {addr}: {e}")
