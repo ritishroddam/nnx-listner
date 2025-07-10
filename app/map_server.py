@@ -400,8 +400,8 @@ async def handle_client(reader, writer):
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
             
             try:
-                ack_packet = b'$MSG,GSMVERSION<6906>&'
-                writer.write(ack_packet)
+                ack_packet = '$MSG,#PANIC,005;<6906>&'
+                writer.write(ack_packet.encode('utf-8'))
                 await writer.drain()
                 print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
             except Exception as e:
