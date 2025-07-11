@@ -1,27 +1,22 @@
-
-import eventlet
 import threading
 import socketserver
-import json
 from datetime import datetime, timedelta
 from pytz import timezone
 import os
 from pymongo import MongoClient
-from flask import Flask, render_template, jsonify, request
+from flask import Flask
 import signal
 import sys
 from datetime import datetime
 from flask_cors import CORS
-from math import radians, sin, cos, sqrt, atan2
+from math import radians, sin, cos, atan2
 import socketio
-import eventlet.wsgi
 import time
 from pymongo import MongoClient
 import ssl
 from geopy.distance import geodesic
 from math import atan2, degrees, radians, sin, cos
 import googlemaps
-from pymongo import ASCENDING
 import asyncio
 import re
 
