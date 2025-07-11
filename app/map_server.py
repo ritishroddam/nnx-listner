@@ -1,29 +1,15 @@
-
-import eventlet
-import threading
-import socketserver
-import json
+import asyncio
 from datetime import datetime, timedelta
 from pytz import timezone
 import os
 from pymongo import MongoClient
-from flask import Flask, render_template, jsonify, request
-import signal
-import sys
-from datetime import datetime
-from flask_cors import CORS
-from math import radians, sin, cos, sqrt, atan2
-import socketio
-import eventlet.wsgi
-import time
-from pymongo import MongoClient
 import ssl
-from geopy.distance import geodesic
-from math import atan2, degrees, radians, sin, cos
 import googlemaps
-from pymongo import ASCENDING
-import asyncio
+from geopy.distance import geodesic
+import socketio
+from math import radians, sin, cos, atan2, degrees
 import re
+import socket
 
 client_activity = {}
 last_emit_time = {}
@@ -42,15 +28,23 @@ geoCodeCollection = db['geocoded_address']
 rawLogSubscriptions = db['raw_log_subscriptions']
 rawLogDataCollection = db['raw_log_data']
 
-app = Flask(__name__)
-CORS(app)
-
 gmaps = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
-# Create compound index for fast queries
 INACTIVITY_TIMEOUT = 600 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
+
+async def update_raw_log_list():
+    while True:
+        results = rawLogSubscriptions.find()
+        rawLogList.clear()
+        rawLogImeiLiscenceMap.clear() 
+        for result in results:
+            imei = result.get('IMEI', '').strip()
+            if imei:
+                rawLogList.append(imei)
+                rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
+        await asyncio.sleep(300)
 
 def storRawData(imei, raw_data):
     try:
@@ -71,40 +65,24 @@ def storRawData(imei, raw_data):
     except Exception as e:
         print(f"[DEBUG] Error storing raw data for IMEI {imei}: {e}")
 
-async def update_raw_log_list():
-    while True:
-        try:
-            results = rawLogSubscriptions.find()
-            rawLogList.clear()
-            rawLogImeiLiscenceMap.clear()
-            for result in results:
-                imei = result.get('IMEI', '').strip()
-                if imei:
-                    rawLogList.append(imei)
-                    rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
-            print("[DEBUG] Updated rawLogImeiLiscenceMap and rawLogList")
-        except Exception as e:
-            print(f"[DEBUG] Error updating raw log list: {e}")
-        await asyncio.sleep(300)
-
-def monitor_inactive_clients():
+async def monitor_inactive_clients():
     while True:
         now = datetime.now()
         to_remove = []
         for addr, info in list(client_activity.items()):
             last_seen = info['last_seen']
+            writer = info['writer']
             if (now - last_seen).total_seconds() > INACTIVITY_TIMEOUT:
                 print(f"[DEBUG] Disconnecting inactive client {addr}")
                 try:
-                    # Close the connection
-                    info['connection'].close()
+                    writer.close()
+                    await writer.wait_closed()
                 except Exception as e:
-                    print(f"[DEBUG] Error closing connection for {addr}: {e}")
+                    print(f"[DEBUG] Error closing writer for {addr}: {e}")
                 to_remove.append(addr)
-        # Remove inactive clients from the dictionary
         for addr in to_remove:
             client_activity.pop(addr, None)
-        time.sleep(60)
+        await asyncio.sleep(60)
 
 def calculate_bearing(coord1, coord2):
     lat1, lon1 = radians(coord1[0]), radians(coord1[1])
@@ -118,7 +96,7 @@ def calculate_bearing(coord1, coord2):
 def validate_coordinates(lat, lng):
     if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
         raise ValueError(f"Invalid coordinates {lat} and {lng}")
-    
+
 def nmea_to_decimal(nmea_value):
     nmea_value = str(nmea_value)
     if '.' in nmea_value:
@@ -129,7 +107,7 @@ def nmea_to_decimal(nmea_value):
         raise ValueError("Invalid NMEA format")
     decimal_degrees = degrees + (minutes / 60.0)
     return decimal_degrees
-    
+
 def geocodeInternal(lat,lng):
     try:
         lat = float(lat)
@@ -186,7 +164,6 @@ def lastEmitInitial():
         },
         {"$replaceRoot": {"newRoot": "$latest_doc"}}
     ]))
-
     for doc in all_documents:
         last_emit_time[doc['imei']] = doc['date_time']
 
@@ -263,29 +240,6 @@ def ensure_socket_connection():
             print("Reconnected to WebSocket server successfully!")
         except Exception as e:
             print(f"Failed to reconnect to WebSocket server: {e}")
-
-def split_atlanta_messages(data):
-    # Use regex to split on the control character + ATL + 15 digits
-    pattern = rb'([\x00-\x0F]ATL\d{15})'
-    matches = list(re.finditer(pattern, data))
-    messages = []
-    for i, match in enumerate(matches):
-        start = match.start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(data)
-        messages.append(data[start:end])
-    return messages
-
-def parse_and_process_data(data, status_prefix):
-    json_data = parse_json_data(data, status_prefix)
-    if json_data:
-        sos_state = json_data.get('sos', '0')
-        if sos_state == '1':
-            log_sos_to_mongodb(json_data)
-        store_data_in_mongodb(json_data)
-    else:
-        print("[DEBUG] Invalid JSON format")
-    
-    return json_data.get('imei')
 
 def parse_json_data(data, status_prefix):
     try:
@@ -380,129 +334,107 @@ def parse_json_data(data, status_prefix):
         print("Error parsing JSON data:", e)
         return None
 
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    allow_reuse_address = True
-
-    def __init__(self, server_address, handler_cls):
-        super().__init__(server_address, handler_cls)
-        self.shutdown_event = threading.Event()
-
-    def server_close(self):
-        super().server_close()
-
-class MyTCPHandler(socketserver.BaseRequestHandler):
-
-    lock = threading.Lock()
-    sos_active = False
-    sos_alert_triggered = False
-
-    def handle(self):
-        addr = self.client_address
-        print(f"[DEBUG] Connection established with {addr}")
-        client_activity[addr] = {'last_seen': datetime.now(), 'connection': self.request}
-        
-        try:
-            receive_data = self.request.recv(4096)
-            
-            if not receive_data:
-                print(f"[DEBUG] Client {addr} disconnected gracefully.")
-                return
-            
-            print(f"[DEBUG] Received data from {addr}: {receive_data!r}")
-            
-            for msg_bytes in split_atlanta_messages(receive_data):
-                try:
-                    index_03 = msg_bytes.find(b'\x03')
-                    index_01 = msg_bytes.find(b'\x01')
-
-                    first_special_index = min(i for i in [index_03, index_01] if i != -1)
-                    first_special_char = msg_bytes[first_special_index:first_special_index+1]
-
-                    status_prefix = first_special_char.hex()
-                except Exception as e:
-                    print(f"[DEBUG] Error finding special characters in data: {e}")
-                    
-                try:
-                    decoded_data = msg_bytes.decode('utf-8').strip()
-                    print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
-                except UnicodeDecodeError:
-                    decoded_data = msg_bytes.decode('latin-1').strip()
-                    print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                imei = parse_and_process_data(decoded_data, status_prefix)
-                
-            print(imei)    
-            print(rawLogList)
-            if imei in rawLogList:
-                storRawData(imei, receive_data)
-                print(f"[DEBUG] Stored raw data for IMEI: {imei}")
-                
-            # try:
-            #     ack_packet = '$MSG,FE<6906>&'
-            #     self.request.sendall(ack_packet.encode('utf-8'))
-            #     print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
-            # except Exception as e:
-            #     print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
-
-        except Exception as e:
-            print(f"[DEBUG] Socket error with {addr}: {e}")
-        finally:
-            print(f"[DEBUG] Client {addr} handler finished.")
-
-def run_servers():
-    global sio, server_url, ssl_context
-    sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed certs
-
-    server_url = "https://cordonnx.com" 
-    cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")  
-
-    ssl_context = ssl.create_default_context(cafile=cert_path)
-
-    try:
-        sio.connect(server_url, transports=['websocket'])
-        print("Connected to WebSocket server successfully!")
-    except Exception as e:
-        print(f"Failed to connect to WebSocket server: {e}")
-        
-    HOST = "0.0.0.0"
-    PORT = 8000
-    server = ThreadedTCPServer((HOST, PORT), MyTCPHandler)
-    print(f"Starting TCP Server @ IP: {HOST}, port: {PORT}")
+async def parse_and_process_data(data, status_prefix):
+    json_data = parse_json_data(data, status_prefix)
+    if json_data:
+        sos_state = json_data.get('sos', '0')
+        if sos_state == '1':
+            log_sos_to_mongodb(json_data)
+        store_data_in_mongodb(json_data)
+    else:
+        print("[DEBUG] Invalid JSON format")
     
-    monitor_thread = threading.Thread(target=monitor_inactive_clients, daemon=True)
-    monitor_thread.start()
+    return json_data.get('imei')
 
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.daemon = True
-    server_thread.start()
+def split_atlanta_messages(data):
+    # Use regex to split on the control character + ATL + 15 digits
+    pattern = rb'([\x00-\x0F]ATL\d{15})'
+    matches = list(re.finditer(pattern, data))
+    messages = []
+    for i, match in enumerate(matches):
+        start = match.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(data)
+        messages.append(data[start:end])
+    return messages
 
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+async def handle_client(reader, writer):
+    addr = writer.get_extra_info('peername')
+    print(f"[DEBUG] Connection established with {addr}")
+    client_activity[addr] = {'last_seen': datetime.now(), 'writer': writer}
+    
+    try:
+        data = await reader.read(4096)
+        
+        print(f"[DEBUG] Received data from {addr}: {data!r}")
+        
+        if not data:
+            print(f"[DEBUG] Client {addr} disconnected gracefully.")
+            raise Exception("Invalid data received")
+        
+        # Update last seen time
+        client_activity[addr]['last_seen'] = datetime.now()
+        
+        # Split the raw bytes into individual messages
+        for msg_bytes in split_atlanta_messages(data):
+            try:
+                index_03 = msg_bytes.find(b'\x03')
+                index_01 = msg_bytes.find(b'\x01')
+                
+                first_special_index = min(i for i in [index_03, index_01] if i != -1)
+                first_special_char = msg_bytes[first_special_index:first_special_index+1]
+                
+                status_prefix = first_special_char.hex()
+            except Exception as e:
+                print(f"[DEBUG] Error finding special characters in data: {e}")
+                
+            try:
+                decoded_data = msg_bytes.decode('utf-8').strip()
+                print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
+            except UnicodeDecodeError:
+                decoded_data = msg_bytes.decode('latin-1').strip()
+                print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
+            imei = await parse_and_process_data(decoded_data, status_prefix)
+        
+        print(imei)    
+        print(rawLogList)
+        if imei in rawLogList:
+            storRawData(imei, data)
+            print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+        
+        # try:
+        #     ack_packet = '$MSG,GETGPS<6906>&'
+        #     writer.write(ack_packet.encode('utf-8'))
+        #     await writer.drain()
+        #     print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
+        # except Exception as e:
+        #     print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
 
-    print("Server running. Press Ctrl+C to stop.")
-    while True:
-        try:
-            signal.pause()
-        except KeyboardInterrupt:
-            print("Server shutting down...")
-            server.shutdown()
-            server.server_close()
-            sys.exit(0)
-
-def signal_handler(signal, frame):
-    print("Received signal:", signal)
-    sys.exit(0)
+    except Exception as e:
+        print(f"[DEBUG] Socket error with {addr}: {e}")
 
 async def main():
-    # Schedule the update_raw_log_list function to run every 5 minutes
+    global sio, server_url, ssl_context
+    sio = socketio.Client(ssl_verify=False)
+    server_url = "https://cordonnx.com"
+    cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")
+    ssl_context = ssl.create_default_context(cafile=cert_path)
+    try:
+        sio.connect(server_url, transports=['websocket'])
+        print("[DEBUG] Connected to WebSocket server successfully!")
+    except Exception as e:
+        print(f"[DEBUG] Failed to connect to WebSocket server: {e}")
+
+    server = await asyncio.start_server(handle_client, '0.0.0.0', 8000)
+    print(f"[DEBUG] Listening for connections on port 8000...")
+
+    # Start the inactivity monitor
+    asyncio.create_task(monitor_inactive_clients())
+    
     asyncio.create_task(update_raw_log_list())
 
+    async with server:
+        await server.serve_forever()
+
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-        lastEmitInitial()
-        run_servers()
-    except Exception as e:
-        import traceback
-        with open("fatal_error.log", "w") as f:
-            f.write(traceback.format_exc())
-        print("Fatal error occurred, see fatal_error.log")
+    print("[DEBUG] __main__ entrypoint")
+    asyncio.run(main())
