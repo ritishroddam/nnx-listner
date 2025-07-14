@@ -441,6 +441,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         except Exception as e:
             print(f"[DEBUG] Socket error with {addr}: {e}")
         finally:
+            client_activity.pop(addr, None)
+            self.request.close()
             print(f"[DEBUG] Client {addr} handler finished.")
 
 def run_servers():
