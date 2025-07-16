@@ -26,7 +26,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 if __name__ == "__main__":
     host = "127.0.0.1"
-    port = 1234
+    port = 8000
     server_shutdown = threading.Event()
 
     server = ThreadedTCPServer((host, port),
