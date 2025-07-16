@@ -13,8 +13,7 @@ class C_TS_VLT_APP_0011(ProtocolParserBase):
     PartialDataDetected = False
 
     def read(self):
-        return self.socket.recv(4096).decode('utf-8')
-
+        return self.socket.recv(4096).encode('unicode_escape').decode('ascii')
     def write(self, data):
         self.socket.sendall(data)
 
