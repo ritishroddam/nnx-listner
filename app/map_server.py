@@ -437,6 +437,11 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             #     print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
             # except Exception as e:
             #     print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
+            try:
+                self.request.sendall(b'$ACK#\r\n')
+                print(f"[DEBUG] Sent ACK to {addr} $ACK#\\r\\n")
+            except Exception as e:
+                print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
             time.sleep(0.2)
 
         except Exception as e:
