@@ -395,8 +395,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         addr = self.client_address
         print(f"[DEBUG] Connection established with {addr}")
         
-        while True:
-            try:
+        try:
+            while True:
                 receive_data = self.request.recv(4096)
                 client_activity[addr] = {'last_seen': datetime.now(), 'connection': self.request}
 
@@ -436,16 +436,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                     self.request.sendall(b'$ACK#\r\n') 
                     # ack_packet = '$MSG,FE<6906>&'
                     # self.request.sendall(ack_packet.encode('utf-8'))
-                    # print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
+                    print(f"[DEBUG] Sent ACK to {addr}")
                 except Exception as e:
                     print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
 
-            except Exception as e:
-                print(f"[DEBUG] Socket error with {addr}: {e}")
-            finally:
-                client_activity.pop(addr, None)
-                self.request.close()
-                print(f"[DEBUG] Client {addr} handler finished.")
+        except Exception as e:
+            print(f"[DEBUG] Socket error with {addr}: {e}")
+        finally:
+            client_activity.pop(addr, None)
+            self.request.close()
+            print(f"[DEBUG] Client {addr} handler finished.")
 
 def run_servers():
     global sio, server_url, ssl_context
