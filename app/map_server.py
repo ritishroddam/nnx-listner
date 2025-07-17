@@ -394,51 +394,50 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         addr = self.client_address
         print(f"[DEBUG] Connection established with {addr}")
+        client_activity[addr] = {'last_seen': datetime.now(), 'connection': self.request}
         
         try:
-            while True:
-                receive_data = self.request.recv(4096)
-                client_activity[addr] = {'last_seen': datetime.now(), 'connection': self.request}
-
-                if not receive_data:
-                    print(f"[DEBUG] Client {addr} disconnected gracefully.")
-                    return
-
-                print(f"[DEBUG] Received data from {addr}: {receive_data!r}")
-
-                for msg_bytes in split_atlanta_messages(receive_data):
-                    try:
-                        index_03 = msg_bytes.find(b'\x03')
-                        index_01 = msg_bytes.find(b'\x01')
-
-                        first_special_index = min(i for i in [index_03, index_01] if i != -1)
-                        first_special_char = msg_bytes[first_special_index:first_special_index+1]
-
-                        status_prefix = first_special_char.hex()
-                    except Exception as e:
-                        print(f"[DEBUG] Error finding special characters in data: {e}")
-
-                    try:
-                        decoded_data = msg_bytes.decode('utf-8').strip()
-                        print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
-                    except UnicodeDecodeError:
-                        decoded_data = msg_bytes.decode('latin-1').strip()
-                        print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
-                    imei = parse_and_process_data(decoded_data, status_prefix)
-
-                print(imei)    
-                print(rawLogList)
-                if imei in rawLogList:
-                    storRawData(imei, receive_data)
-                    print(f"[DEBUG] Stored raw data for IMEI: {imei}")
-
+            receive_data = self.request.recv(4096)
+            
+            if not receive_data:
+                print(f"[DEBUG] Client {addr} disconnected gracefully.")
+                return
+            
+            print(f"[DEBUG] Received data from {addr}: {receive_data!r}")
+            
+            for msg_bytes in split_atlanta_messages(receive_data):
                 try:
-                    self.request.sendall(b'$ACK#\r\n') 
-                    # ack_packet = '$MSG,FE<6906>&'
-                    # self.request.sendall(ack_packet.encode('utf-8'))
-                    print(f"[DEBUG] Sent ACK to {addr}")
+                    index_03 = msg_bytes.find(b'\x03')
+                    index_01 = msg_bytes.find(b'\x01')
+
+                    first_special_index = min(i for i in [index_03, index_01] if i != -1)
+                    first_special_char = msg_bytes[first_special_index:first_special_index+1]
+
+                    status_prefix = first_special_char.hex()
                 except Exception as e:
-                    print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
+                    print(f"[DEBUG] Error finding special characters in data: {e}")
+                    
+                try:
+                    decoded_data = msg_bytes.decode('utf-8').strip()
+                    print(f"[DEBUG] Decoded data (utf-8) from {addr}: {decoded_data!r}")
+                except UnicodeDecodeError:
+                    decoded_data = msg_bytes.decode('latin-1').strip()
+                    print(f"[DEBUG] Decoded data (latin-1) from {addr}: {decoded_data!r}")
+                imei = parse_and_process_data(decoded_data, status_prefix)
+                
+            print(imei)    
+            print(rawLogList)
+            if imei in rawLogList:
+                storRawData(imei, receive_data)
+                print(f"[DEBUG] Stored raw data for IMEI: {imei}")
+                
+            # try:
+            #     ack_packet = '$MSG,FE<6906>&'
+            #     self.request.sendall(ack_packet.encode('utf-8'))
+            #     print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
+            # except Exception as e:
+            #     print(f"[DEBUG] Failed to send ACK to {addr}: {e}")
+            time.sleep(0.2)
 
         except Exception as e:
             print(f"[DEBUG] Socket error with {addr}: {e}")
