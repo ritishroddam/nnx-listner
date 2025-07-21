@@ -432,7 +432,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 print(f"[DEBUG] Stored raw data for IMEI: {imei}")
                 
             try:
-                ack_packet = '$MSG,#CONFIG?<6906>&'
+                ack_packet = '$MSG,WEBSTART010S,010S,010S,010S<6906>&'
                 self.request.sendall(ack_packet.encode('utf-8'))
                 print(f"[DEBUG] Sent ACK to {addr} {ack_packet!r}")
             except Exception as e:
