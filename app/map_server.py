@@ -454,7 +454,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 def run_servers():
     global sio, server_url
 
-    sio = socketio.Client(ssl_verify=False)
+    sio = socketio.Client()
     
     server_url = "https://cordonnx.com"
 
