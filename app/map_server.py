@@ -458,7 +458,7 @@ def run_servers():
     server_url = "https://cordonnx.com" 
     cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")  
 
-    ssl_context = ssl.create_default_context(cafile=cert_path)
+    ssl_context = ssl.create_default_context()
 
     try:
         sio.connect(server_url, transports=['websocket'])
