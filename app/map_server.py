@@ -452,13 +452,11 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         #     print(f"[DEBUG] Client {addr} handler finished.")
 
 def run_servers():
-    global sio, server_url, ssl_context
-    sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed certs
+    global sio, server_url
 
-    server_url = "https://cordonnx.com" 
-    cert_path = os.path.join(os.path.dirname(__file__), "cert", "fullchain.pem")  
-
-    ssl_context = ssl.create_default_context()
+    sio = socketio.Client(ssl_verify=False)
+    
+    server_url = "https://cordonnx.com"
 
     try:
         sio.connect(server_url, transports=['websocket'])
