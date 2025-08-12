@@ -16,6 +16,14 @@ async def handle_client(reader, writer):
             if not data:
                 print(f"[Debug {datetime.now()}] {addr} disconnected gracefully.")
                 break
+
+            try:
+                data = data.decode('utf-8')
+            except UnicodeDecodeError:
+                data = data.decode('latin-1')
+
+            data = data.encode('unicode_escape').decode('ascii')
+            
             print(f"[Debug {datetime.now()}] Received ({len(data)} bytes): {data}")
             # Optionally, parse and check if this data corresponds to GPRS status response
     except Exception as e:
