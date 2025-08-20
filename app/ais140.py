@@ -1,6 +1,8 @@
 import asyncio
 from datetime import datetime
 
+READ_TIMEOUT = 300
+
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"[Debug {datetime.now()}] Connection from {addr}")
@@ -12,7 +14,7 @@ async def handle_client(reader, writer):
 
     try:
         while True:
-            data = await reader.read(1024)
+            data = await asyncio.wait_for(reader.read(4096), timeout=READ_TIMEOUT)
             if not data:
                 print(f"[Debug {datetime.now()}] {addr} disconnected gracefully.")
                 break
@@ -26,6 +28,10 @@ async def handle_client(reader, writer):
             
             print(f"[Debug {datetime.now()}] Received ({len(data)} bytes): {data}")
             # Optionally, parse and check if this data corresponds to GPRS status response
+            
+    except asyncio.TimeoutError:
+        print(f"[Debug {datetime.now()}] {addr} read timed out after {READ_TIMEOUT}s; closing.")
+        
     except Exception as e:
         print(f"[Debug {datetime.now()}] Error: {e}")
     finally:
