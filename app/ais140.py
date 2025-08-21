@@ -93,18 +93,18 @@ def _ns_ew_to_signed(lat: Optional[float], ns: Optional[str],
 
 def _parse_neighbors(neigh_fields: List[str]) -> List[Dict[str, Any]]:
     """
-    Neighboring cells appear as repeating triplets: [cellId, lac, ss]
+    Neighboring cells appear as repeating triplets: [nmr, lac, cellId]
     In the example, neighbors start at index 34 and run through index 45 (inclusive),
-    i.e., slice fields[34:46].
+    i.e., slice fields[35:46].
     """
     res: List[Dict[str, Any]] = []
     for i in range(0, len(neigh_fields), 3):
         try:
-            cell_id = neigh_fields[i]
+            nmr = neigh_fields[i]
             lac = neigh_fields[i + 1]
-            ss = _to_int(neigh_fields[i + 2])
+            cell_id = neigh_fields[i + 2]
             if cell_id:
-                res.append({"cellId": cell_id, "lac": lac, "ss": ss})
+                res.append({"cellId": cell_id, "lac": lac, "nmr": nmr})
         except Exception:
             continue
     return res
@@ -159,8 +159,8 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         lat_dir = g(13) or ""; lon_dir = g(15) or ""
         lat, lon = _ns_ew_to_signed(lat, lat_dir, lon, lon_dir)
 
-        # neighbors slice inclusive of index 45 -> [34:46]
-        neighbors = _parse_neighbors(parts[34:46])
+        # neighbors slice inclusive of index 45 -> [35:46]
+        neighbors = _parse_neighbors(parts[35:46])
 
         doc: Dict[str, Any] = {
             "type": "LOCATION",
@@ -179,14 +179,14 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "date": _pad_left(date_raw, 8),       # raw ddmmyyyy (zero-padded)
                 "time": _pad_left(time_raw, 6),       # raw hhmmss (zero-padded)
                 "timestamp": ts,                      # ISO UTC (can be None if malformed)
-                "fix": _to_int(g(9)),
+                "gpsStatus": _to_int(g(9)),
                 "lat": lat,
                 "lon": lon,
                 "latDir": lat_dir or None,
                 "lonDir": lon_dir or None,
                 "speed": _to_float(g(16)),
                 "heading": _to_float(g(17)),
-                "satellites": _to_int(g(18)),
+                "numSatellites": _to_int(g(18)),
                 "altitude": _to_float(g(19)),
                 "pdop": _to_float(g(20)),
                 "hdop": _to_float(g(21)),
@@ -196,9 +196,9 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "mainPower": _to_int(g(24)),
                 "mainBatteryVoltage": _to_float(g(25)),
                 "internalBatteryVoltage": _to_float(g(26)),
-                "emergency": _to_int(g(27)),
+                "emergencyStatus": _to_int(g(27)),
                 "tamper": g(28),
-                "odometer": _to_float(g(46)),
+                "odometer": _to_float(g(49)),
             },
             "network": {
                 "operator": g(22),
@@ -207,13 +207,14 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "mnc": _to_int(g(31)),
                 "lac": g(32),
                 "cellId": g(33),
+                "nmr": g(34),
                 "neighbors": neighbors,
             },
             "io": {
-                "digitalInputs": g(47),
-                "digitalOutputs": g(51),
-                "analog1": _to_float(g(49)),
-                "analog2": _to_float(g(50)),
+                "digitalInputs": g(46),
+                "digitalOutputs": g(47),
+                "currentGeoFence": _to_float(g(50)),
+                "RFID": g(51),
             },
             "checksum": (g(52) or "").replace("*", "").strip(),
         }
@@ -230,13 +231,13 @@ def parse_packet(raw: str) -> Dict[str, Any]:
             "vendor": vendor,
             "firmware": firmware,
             "health": {
-                "batteryPct": _to_float(g(5)),
+                "batteryLevel": _to_float(g(5)),
                 "lowBatteryThresh": _to_float(g(6)),
-                "flashUsagePct": _to_float(g(7)),
+                "memoryUsage": _to_float(g(7)),
                 "updateRate": {"ignOnSec": _to_float(g(8)), "ignOffSec": _to_float(g(9))},
-                "io": g(10),
-                "a1": _to_float(g(11)),
-                "a2": _to_float(g(12)),
+                "digitalInputs": g(10),
+                "analogA1": _to_float(g(11)),
+                "analogA2": _to_float(g(12)),
             },
         }
         return doc
