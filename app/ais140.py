@@ -426,6 +426,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     raw = pkt_bytes.decode("utf-8", errors="replace")
                 except Exception:
                     raw = pkt_bytes.decode("latin-1", errors="replace")
+                    
+                raw = raw.encode('unicode_escape').decode('ascii')
 
                 # Parse first (so raw log gets IMEI/VRN)
                 parsed = parse_packet(raw)
