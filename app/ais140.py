@@ -485,7 +485,7 @@ async def update_raw_log_list():
             rawLogList.clear()
             rawLogImeiLiscenceMap.clear()
             async for result in results:
-                imei = result.get('imei')
+                imei = result.get('IMEI')
                 if imei:
                     rawLogList.append(imei)
                     rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
@@ -503,9 +503,9 @@ async def ensure_indexes():
     # Latest: _id is IMEI (implicit); add ts index for dashboards
     await latest_coll.create_index([("timestamp", DESCENDING)])
 
-    # Raw logs TTL (30 days) on 'receivedAt'
+    # Raw logs TTL (30 days) on 'timestamp'
     try:
-        await raw_coll.create_index("receivedAt", expireAfterSeconds=30 * 24 * 3600)
+        await raw_coll.create_index("timestamp", expireAfterSeconds=30 * 24 * 3600)
     except Exception:
         # If index exists with different TTL, you'd need to drop/recreate manually.
         pass
