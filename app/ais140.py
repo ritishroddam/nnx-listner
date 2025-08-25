@@ -215,6 +215,9 @@ def _parse_neighbors(neigh_fields: List[str]) -> List[Dict[str, Any]]:
             continue
     return res
 
+def _convert_date_emit(date):
+    return (date[:4] + date[6:8])
+
 # -----------------------
 # Packet parsing
 # -----------------------
@@ -239,7 +242,7 @@ async def parse_for_emit(parsedData):
         "speed": parsedData.get("telemetry", {}).get("speed"),
         "latitude": parsedData.get("gps", {}).get("lat"),
         "longitude": parsedData.get("gps", {}).get("lon"),
-        "date": parsedData.get("gps", {}).get("date"),
+        "date": _convert_date_emit(parsedData.get("gps", {}).get("date")),
         "time": parsedData.get("gps", {}).get("time"),
         "course": parsedData.get("gps", {}).get("heading"),
         "address": address,
