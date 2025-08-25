@@ -99,7 +99,7 @@ def _calculate_bearing(coord1, coord2):
     bearing = (degrees(atan2(x, y)) + 360) % 360
     return DIRECTIONS[int(((bearing + (BEARING_DEGREES/2)) % 360) // BEARING_DEGREES)]
 
-def _geocodeInternal(lat,lng):
+async def _geocodeInternal(lat,lng):
     try:
         lat = float(lat)
         lng = float(lng)
@@ -117,7 +117,7 @@ def _geocodeInternal(lat,lng):
         nearest_entry = None
         min_distance = 0.5 
         
-        for entry in nearby_entries:
+        async for entry in nearby_entries:
             saved_coord = (entry['lat'], entry['lng'])
             current_coord = (lat, lng)
             distance = geodesic(saved_coord, current_coord).km
@@ -141,7 +141,7 @@ def _geocodeInternal(lat,lng):
 
         address = reverse_geocode_result[0]['formatted_address']
 
-        geocode_coll.insert_one({
+        await geocode_coll.insert_one({
             'lat': lat,
             'lng': lng,
             'address': address
@@ -220,7 +220,7 @@ def _parse_neighbors(neigh_fields: List[str]) -> List[Dict[str, Any]]:
 # -----------------------
 
 async def parse_for_emit(parsedData):
-    inventoryData = vehicle_invy_coll.find_one({"IMEI": parsedData.get("imei")})
+    inventoryData = await vehicle_invy_coll.find_one({"IMEI": parsedData.get("imei")})
     if inventoryData:
         licensePlateNumber = inventoryData.get("LicensePlateNumber", "Unknown")
         vehicleType = inventoryData.get("vehicle_type", "Unknown")
@@ -231,7 +231,7 @@ async def parse_for_emit(parsedData):
         vehicleType = "Unknown"
         slowSpeed = 40.0
         normalSpeed = 60.0
-    address = _geocodeInternal(parsedData.get("gps", {}).get("lat"), parsedData.get("gps", {}).get("lon"))
+    address = await _geocodeInternal(parsedData.get("gps", {}).get("lat"), parsedData.get("gps", {}).get("lon"))
     json_data = {
         "imei": parsedData.get("imei"),
         "LicensePlateNumber": licensePlateNumber,
