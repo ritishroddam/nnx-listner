@@ -30,6 +30,7 @@ mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-bl
 db = mongo_client["nnx"]
 
 collection = db['atlanta']
+collectionLatest = db['atlantaLatest']
 sos_logs_collection = db['sos_logs']  
 distance_travelled_collection = db['distanceTravelled']
 vehicle_inventory_collection = db['vehicle_inventory']
@@ -207,6 +208,9 @@ def store_data_in_mongodb(json_data):
         result = collection.insert_one(json_data)
         ensure_socket_connection()
         if json_data['gps'] == 'A' and json_data['status'] == '01' and should_emit(json_data['imei'],json_data['date_time']):
+            latestData = json_data
+            latestData["_id"] = json_data['imei']
+            collectionLatest.replace_one({'_id': json_data['imei']}, latestData, upsert=True)
             json_data['_id'] = str(json_data['_id'])
             json_data['date_time'] = str(json_data['date_time'])
             json_data['timestamp'] = str(json_data['timestamp'])
