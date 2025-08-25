@@ -30,6 +30,7 @@ DB_NAME = "nnx"
 COL_LOC = "atlantaAis140"            # structured history (location/events/health/emergency)
 COL_RAW = "rawLogAtlantaAis140"      # raw packets (audit; TTL index applied)
 COL_LATEST = "atlantaAis140_latest"  # one doc per IMEI (CP only, full doc)
+COL_HEALTH = "atlantaAis140_health"
 
 # -----------------------
 # Mongo (Motor)
@@ -39,6 +40,7 @@ db = mongo_client[DB_NAME]
 loc_coll = db[COL_LOC]
 raw_coll = db[COL_RAW]
 latest_coll = db[COL_LATEST]
+health_coll = db[COL_HEALTH]
 rawLogSubscriptions = db['raw_log_subscriptions']
 
 # -----------------------
@@ -47,6 +49,7 @@ rawLogSubscriptions = db['raw_log_subscriptions']
 loc_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
 raw_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
 latest_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
+health_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
 
 # -----------------------
 # Helpers
@@ -125,7 +128,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
       - HP: Health (Table-2)                      -> saved to history
       - EPB: Emergency (EMR/SEM)                  -> saved to history
     """
-    pkt: Dict[str, Any] = {"raw": raw, "ingestedAt": datetime.now(timezone.utc)}
+    pkt: Dict[str, Any] = {"ingestedAt": datetime.now(timezone.utc)}
     raw = raw.strip()
     if not raw.startswith("$"):
         pkt["type"] = "UNKNOWN"
@@ -449,13 +452,15 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
                 # Enqueue structured into history
                 ptype = parsed.get("type")
-                if ptype in ("LOCATION", "HEALTH", "EMERGENCY"):
+                if ptype == "LOCATION":
                     # Mirror gps.timestamp into top-level timestamp if available
                     # (Already done for CP; keep as-is for others)
                     await loc_queue.put(parsed)
                     # Only CP -> latest
                     if ptype == "LOCATION":
                         await latest_queue.put(parsed)
+                elif ptype == "HEALTH":
+                    await health_queue.put(parsed)
 
                 # ACKs (only if device requires; disabled by default)
                 # if ptype == "EMERGENCY" and parsed.get("imei"):
@@ -517,6 +522,7 @@ async def main():
     loc_task = asyncio.create_task(_bulk_insert_worker(loc_coll, loc_queue, "loc"))
     raw_task = asyncio.create_task(_bulk_insert_worker(raw_coll, raw_queue, "raw"))
     latest_task = asyncio.create_task(_bulk_latest_upsert_worker(latest_coll, latest_queue))
+    health_task = asyncio.create_task(_bulk_insert_worker(health_coll, health_queue, "health"))
 
     rawLogListTask = asyncio.create_task(update_raw_log_list())
     
@@ -527,9 +533,9 @@ async def main():
             await server.serve_forever()
         finally:
             # Graceful shutdown: flush remaining ops
-            for t in (loc_task, raw_task, latest_task, rawLogListTask):
+            for t in (loc_task, raw_task, latest_task, rawLogListTask, health_task):
                 t.cancel()
-            await asyncio.gather(loc_task, raw_task, latest_task, rawLogListTask, return_exceptions=True)
+            await asyncio.gather(loc_task, raw_task, latest_task, rawLogListTask, health_task, return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
