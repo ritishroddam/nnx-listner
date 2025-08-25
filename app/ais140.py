@@ -242,7 +242,7 @@ async def parse_for_emit(parsedData):
         "date": parsedData.get("gps", {}).get("date"),
         "time": parsedData.get("gps", {}).get("time"),
         "course": parsedData.get("gps", {}).get("heading"),
-        "location": address,
+        "address": address,
         "ignition": parsedData.get("telemetry", {}).get("ignition"),
         "gsm_sig": parsedData.get("network", {}).get("gsmSignal"),
         "sos": parsedData.get("telemetry", {}).get("emergencyStatus"),
