@@ -223,7 +223,7 @@ async def parse_for_emit(parsedData):
     inventoryData = await vehicle_invy_coll.find_one({"IMEI": parsedData.get("imei")})
     if inventoryData:
         licensePlateNumber = inventoryData.get("LicensePlateNumber", "Unknown")
-        vehicleType = inventoryData.get("vehicle_type", "Unknown")
+        vehicleType = inventoryData.get("VehicleType", "Unknown")
         slowSpeed = float(inventoryData.get("slowSpeed", "40.0"))
         normalSpeed = float(inventoryData.get("normalSpeed", "60.0"))
     else:
