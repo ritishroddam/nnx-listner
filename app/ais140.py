@@ -215,14 +215,20 @@ def _parse_neighbors(neigh_fields: List[str]) -> List[Dict[str, Any]]:
             continue
     return res
 
-def _convert_date_emit(date):
-    return (date[:4] + date[6:8])
+def _convert_date_time_emit(date):
+    if not date:
+        now = datetime.now(timezone(timedelta(hours=5, minutes=30)))
+        return now.strftime("%d%m%y"), now.strftime("%H%M%S")
+    # Convert UTC datetime to IST (UTC+5:30)
+    ist = date.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    return ist.strftime("%d%m%y"), ist.strftime("%H%M%S")
 
 # -----------------------
 # Packet parsing
 # -----------------------
 
 async def parse_for_emit(parsedData):
+    date, time = _convert_date_time_emit(parsedData.get("timestamp"))
     inventoryData = await vehicle_invy_coll.find_one({"IMEI": parsedData.get("imei")})
     if inventoryData:
         licensePlateNumber = inventoryData.get("LicensePlateNumber", "Unknown")
@@ -242,8 +248,8 @@ async def parse_for_emit(parsedData):
         "speed": parsedData.get("telemetry", {}).get("speed"),
         "latitude": parsedData.get("gps", {}).get("lat"),
         "longitude": parsedData.get("gps", {}).get("lon"),
-        "date": _convert_date_emit(parsedData.get("gps", {}).get("date")),
-        "time": parsedData.get("gps", {}).get("time"),
+        "date": date,
+        "time": time,
         "course": parsedData.get("gps", {}).get("heading"),
         "address": address,
         "ignition": parsedData.get("telemetry", {}).get("ignition"),
