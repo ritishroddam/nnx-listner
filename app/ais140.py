@@ -18,6 +18,10 @@ READ_TIMEOUT = 300
 BULK_MAX_DOCS = 500
 BULK_MAX_LATENCY_MS = 200
 
+last_emit_time = {}
+rawLogList = []
+rawLogImeiLiscenceMap = {}
+
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI env var is required")
@@ -35,6 +39,7 @@ db = mongo_client[DB_NAME]
 loc_coll = db[COL_LOC]
 raw_coll = db[COL_RAW]
 latest_coll = db[COL_LATEST]
+rawLogSubscriptions = db['raw_log_subscriptions']
 
 # -----------------------
 # Batching queues (backpressure)
@@ -165,7 +170,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         doc: Dict[str, Any] = {
             "type": "LOCATION",
             "imei": imei,
-            "vehicleRegNo": vrn if vrn not in ("", None) else None,
+            "LicensePlateNumber": vrn if vrn not in ("", None) else None,
             "timestamp": ts or datetime.now(timezone.utc),  # top-level ts for indexes
             "vendor": g(2),
             "firmware": g(3),
@@ -271,7 +276,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         doc = {
             "type": "EMERGENCY",
             "imei": imei,
-            "vehicleRegNo": vrn if vrn not in ("", None) else None,
+            "LicensePlateNumber": vrn if vrn not in ("", None) else None,
             "timestamp": ts or datetime.now(timezone.utc),
             "emergency": {"messageType": msg_type, "packetType": pkt_type, "gpsValid": gps_valid},
             "gps": {"lat": lat, "lon": lon},
@@ -434,12 +439,13 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 parsed = parse_packet(raw)
 
                 # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
-                await raw_queue.put({
-                    "imei": parsed.get("imei"),
-                    "vehicleRegNo": parsed.get("vehicleRegNo"),
-                    "raw": raw,
-                    "receivedAt": datetime.now(timezone.utc),
-                })
+                if parsed.get("imei") in rawLogList:
+                    await raw_queue.put({
+                        "imei": parsed.get("imei"),
+                        "LicensePlateNumber": rawLogImeiLiscenceMap.get(parsed.get("imei")),
+                        "raw_data": raw,
+                        "timestamp": datetime.now(timezone.utc),
+                    })
 
                 # Enqueue structured into history
                 ptype = parsed.get("type")
@@ -472,10 +478,26 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 # Indexes & startup
 # -----------------------
 
+async def update_raw_log_list():
+    while True:
+        try: 
+            results = rawLogSubscriptions.find()
+            rawLogList.clear()
+            rawLogImeiLiscenceMap.clear()
+            async for result in results:
+                imei = result.get('imei')
+                if imei:
+                    rawLogList.append(imei)
+                    rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
+        except Exception as e:
+            print(f"[{datetime.now()}] ! Error updating raw log list: {e}")
+        await asyncio.sleep(300)
+
+
 async def ensure_indexes():
     # History queries
     await loc_coll.create_index([("imei", ASCENDING), ("timestamp", DESCENDING)])
-    await loc_coll.create_index([("vehicleRegNo", ASCENDING), ("timestamp", DESCENDING)])
+    await loc_coll.create_index([("LicensePlateNumber", ASCENDING), ("timestamp", DESCENDING)])
     await loc_coll.create_index([("timestamp", DESCENDING)])
 
     # Latest: _id is IMEI (implicit); add ts index for dashboards
@@ -496,6 +518,8 @@ async def main():
     raw_task = asyncio.create_task(_bulk_insert_worker(raw_coll, raw_queue, "raw"))
     latest_task = asyncio.create_task(_bulk_latest_upsert_worker(latest_coll, latest_queue))
 
+    rawLogListTask = asyncio.create_task(update_raw_log_list())
+    
     server = await asyncio.start_server(handle_client, HOST, PORT)
     print(f"[{datetime.now()}] Listening on {HOST}:{PORT}")
     async with server:
@@ -503,9 +527,9 @@ async def main():
             await server.serve_forever()
         finally:
             # Graceful shutdown: flush remaining ops
-            for t in (loc_task, raw_task, latest_task):
+            for t in (loc_task, raw_task, latest_task, rawLogListTask):
                 t.cancel()
-            await asyncio.gather(loc_task, raw_task, latest_task, return_exceptions=True)
+            await asyncio.gather(loc_task, raw_task, latest_task, rawLogListTask, return_exceptions=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
