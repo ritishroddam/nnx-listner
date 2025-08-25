@@ -1,9 +1,13 @@
 # ais140_listener.py
 import os
 import asyncio
-from datetime import datetime, timezone
-from typing import Optional, Tuple, Dict, Any, List
+import googlemaps
+import socketio
 
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Tuple, Dict, Any, List
+from math import atan2, degrees, radians, sin, cos
+from geopy.distance import geodesic
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
@@ -13,6 +17,9 @@ from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 HOST = "0.0.0.0"
 PORT = 8001
 READ_TIMEOUT = 300
+DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+BEARING_DEGREES = 360 / len(DIRECTIONS)
+GMAPS = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
 # Tune bulk flush for your infra (throughput vs latency)
 BULK_MAX_DOCS = 500
@@ -31,6 +38,9 @@ COL_LOC = "atlantaAis140"            # structured history (location/events/healt
 COL_RAW = "rawLogAtlantaAis140"      # raw packets (audit; TTL index applied)
 COL_LATEST = "atlantaAis140_latest"  # one doc per IMEI (CP only, full doc)
 COL_HEALTH = "atlantaAis140_health"
+COL_GEOCODED = "geocoded_address"
+COL_RAW_SUBSCRIPTIONS = "raw_log_subscriptions"
+COL_VEHICLE_INVENTORY = "vehicle_inventory"
 
 # -----------------------
 # Mongo (Motor)
@@ -41,7 +51,9 @@ loc_coll = db[COL_LOC]
 raw_coll = db[COL_RAW]
 latest_coll = db[COL_LATEST]
 health_coll = db[COL_HEALTH]
-rawLogSubscriptions = db['raw_log_subscriptions']
+rawLogSubscriptions = db[COL_RAW_SUBSCRIPTIONS]
+geocode_coll = db[COL_GEOCODED]
+vehicle_invy_coll = db[COL_VEHICLE_INVENTORY]
 
 # -----------------------
 # Batching queues (backpressure)
@@ -54,6 +66,92 @@ health_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
 # -----------------------
 # Helpers
 # -----------------------
+
+def _should_emit(imei, date_time):
+    if imei not in last_emit_time or date_time - last_emit_time[imei] > timedelta(seconds=1):
+        last_emit_time[imei] = date_time
+        return True
+    return False
+
+def _ensure_socket_connection():
+    if not sio.connected:
+        print(f"[{datetime.now()}] ! Socket.IO disconnected, attempting to reconnect...")
+        try:
+            sio.disconnect()
+        except Exception:
+            pass
+        try:
+            sio.connect(server_url, transports = ['websocket'])
+            print(f"[{datetime.now()}] * Socket.IO reconnected")
+        except Exception as e:
+            print(f"[{datetime.now()}] ! Socket.IO reconnection failed: {e}")
+
+def _validate_coordinates(lat, lng):
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        raise ValueError(f"Invalid coordinates {lat} and {lng}")
+
+def _calculate_bearing(coord1, coord2):
+    lat1, lon1 = radians(coord1[0]), radians(coord1[1])
+    lat2, lon2 = radians(coord2[0]), radians(coord2[1])
+    d_lon = lon2 - lon1
+    x = sin(d_lon) * cos(lat2)
+    y = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(d_lon)
+    bearing = (degrees(atan2(x, y)) + 360) % 360
+    return DIRECTIONS[int(((bearing + (BEARING_DEGREES/2)) % 360) // BEARING_DEGREES)]
+
+def _geocodeInternal(lat,lng):
+    try:
+        lat = float(lat)
+        lng = float(lng)
+        _validate_coordinates(lat, lng)
+    except(ValueError, TypeError) as e:
+        print(f"Invalid input: {str(e)}")
+        return "Invalid coordinates"
+
+    try:
+        nearby_entries = geocode_coll.find({
+            "lat": {"$gte": lat - 0.0045, "$lte": lat + 0.0045},
+            "lng": {"$gte": lng - 0.0045, "$lte": lng + 0.0045}
+        })
+        
+        nearest_entry = None
+        min_distance = 0.5 
+        
+        for entry in nearby_entries:
+            saved_coord = (entry['lat'], entry['lng'])
+            current_coord = (lat, lng)
+            distance = geodesic(saved_coord, current_coord).km
+            
+            if distance <= min_distance:
+                nearest_entry = entry
+                min_distance = distance
+
+        if nearest_entry:
+            saved_coord = (nearest_entry['lat'], nearest_entry['lng'])
+            current_coord = (lat, lng)
+            bearing = _calculate_bearing(saved_coord, current_coord)
+            
+            return (f"{min_distance:.2f} km {bearing} from {nearest_entry['address']}"
+                      if min_distance > 0 else nearest_entry['address'])
+
+        reverse_geocode_result = GMAPS.reverse_geocode((lat, lng))
+        if not reverse_geocode_result:
+            print("Geocoding API failed")
+            return "Address unavailable"
+
+        address = reverse_geocode_result[0]['formatted_address']
+
+        geocode_coll.insert_one({
+            'lat': lat,
+            'lng': lng,
+            'address': address
+        })
+
+        return address
+
+    except Exception as e:
+        print(f"Geocoding error: {str(e)}")
+        return "Error retrieving address"
 
 def _pad_left(s: Optional[str], length: int) -> Optional[str]:
     if s is None:
@@ -120,6 +218,39 @@ def _parse_neighbors(neigh_fields: List[str]) -> List[Dict[str, Any]]:
 # -----------------------
 # Packet parsing
 # -----------------------
+
+async def parse_for_emit(parsedData):
+    inventoryData = vehicle_invy_coll.find_one({"IMEI": parsedData.get("imei")})
+    if inventoryData:
+        licensePlateNumber = inventoryData.get("LicensePlateNumber", "Unknown")
+        vehicleType = inventoryData.get("vehicle_type", "Unknown")
+        slowSpeed = float(inventoryData.get("slowSpeed", "40.0"))
+        normalSpeed = float(inventoryData.get("normalSpeed", "60.0"))
+    else:
+        licensePlateNumber = "Unknown"
+        vehicleType = "Unknown"
+        slowSpeed = 40.0
+        normalSpeed = 60.0
+    address = _geocodeInternal(parsedData.get("gps", {}).get("lat"), parsedData.get("gps", {}).get("lon"))
+    json_data = {
+        "imei": parsedData.get("imei"),
+        "LicensePlateNumber": licensePlateNumber,
+        "VehicleType": vehicleType,
+        "speed": parsedData.get("telemetry", {}).get("speed"),
+        "latitude": parsedData.get("gps", {}).get("lat"),
+        "longitude": parsedData.get("gps", {}).get("lon"),
+        "date": parsedData.get("gps", {}).get("date"),
+        "time": parsedData.get("gps", {}).get("time"),
+        "course": parsedData.get("gps", {}).get("heading"),
+        "location": address,
+        "ignition": parsedData.get("telemetry", {}).get("ignition"),
+        "gsm_sig": parsedData.get("network", {}).get("gsmSignal"),
+        "sos": parsedData.get("telemetry", {}).get("emergencyStatus"),
+        "odometer": parsedData.get("telemetry", {}).get("odometer"),
+        "normalSpeed": normalSpeed,
+        "slowSpeed": slowSpeed
+    }
+    return json_data
 
 def parse_packet(raw: str) -> Dict[str, Any]:
     """
@@ -192,7 +323,6 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "lon": lon,
                 "latDir": lat_dir or None,
                 "lonDir": lon_dir or None,
-                "speed": _to_float(g(16)),
                 "heading": _to_float(g(17)),
                 "numSatellites": _to_int(g(18)),
                 "altitude": _to_float(g(19)),
@@ -200,6 +330,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "hdop": _to_float(g(21)),
             },
             "telemetry": {
+                "speed": _to_float(g(16)),
                 "ignition": _to_int(g(23)),
                 "mainPower": _to_int(g(24)),
                 "mainBatteryVoltage": _to_float(g(25)),
@@ -459,6 +590,19 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     # Only CP -> latest
                     if ptype == "LOCATION":
                         await latest_queue.put(parsed)
+
+                    if _should_emit(parsed.get("imei"), parsed.get("timestamp")):
+                        _ensure_socket_connection()
+                        emit_data = await parse_for_emit(parsed)
+                        if sio.connected:
+                            try:
+                                sio.emit('vehicle_live_update', emit_data)
+                                sio.emit('vehicle_update', emit_data)
+                            except Exception as e:
+                                print(f"[{datetime.now()}] ! Socket.IO emit error: {e}")
+                        else:
+                            print(f"[{datetime.now()}] ! Socket.IO not connected, skipping emit")
+
                 elif ptype == "HEALTH":
                     await health_queue.put(parsed)
 
@@ -482,6 +626,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 # -----------------------
 # Indexes & startup
 # -----------------------
+
+async def lastEmitInitial():
+    results = latest_coll.find({}, {"_id": 1, "timestamp": 1})
+    async for result in results:
+        last_emit_time[result['_id']] = result.get('timestamp')
 
 async def update_raw_log_list():
     while True:
@@ -516,8 +665,22 @@ async def ensure_indexes():
         pass
 
 async def main():
+    global sio, server_url
+    
+    sio = socketio.Client()
+    
     await ensure_indexes()
+    await lastEmitInitial()
 
+    server_url = "https://cordonnx.com"
+    
+    try:
+        sio.connect(server_url, transports = ['websocket'])
+        print(f"[{datetime.now()}] Connected to Socket.IO server at {server_url}")
+    except Exception as e:
+        print(f"[{datetime.now()}] ! Failed to connect to Socket.IO server: {e}")
+        
+    
     # Start workers
     loc_task = asyncio.create_task(_bulk_insert_worker(loc_coll, loc_queue, "loc"))
     raw_task = asyncio.create_task(_bulk_insert_worker(raw_coll, raw_queue, "raw"))

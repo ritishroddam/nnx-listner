@@ -214,8 +214,8 @@ def store_data_in_mongodb(json_data):
             if inventory_data:
                 json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
                 json_data['VehicleType'] = inventory_data.get('vehicle_type', 'Unknown')
-                json_data['slowSpeed'] = float(inventory_data.get('slowSpeed', "0") or 40.0)
-                json_data['normalSpeed'] = float(inventory_data.get('normalSpeed', "0") or 60.0)
+                json_data['slowSpeed'] = float(inventory_data.get('slowSpeed', "40.0"))
+                json_data['normalSpeed'] = float(inventory_data.get('normalSpeed', "60.0"))
             else:
                 json_data['LicensePlateNumber'] = 'Unknown'
                 json_data['VehicleType'] = 'Unknown'
