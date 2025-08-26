@@ -83,7 +83,7 @@ def atlantaStatusData():
             "time": {"$first": "$gps.time"},
             "gsm_sig": {"$first": "$network.gsmSignal"},
             "history": {"$push": {
-                "timestamp": "$timestamp",
+                "date_time": "$timestamp",
                 "ignition": "$telemetry.ignition",
                 "speed": "$telemetry.speed"
             }}
@@ -91,7 +91,7 @@ def atlantaStatusData():
         {"$project": {
             "_id": 1,
             "latest": {
-                "timestamp": "$timestamp",
+                "date_time": "$timestamp",
                 "ignition": "$ignition",
                 "speed": "$speed",
                 "date": "$date",
