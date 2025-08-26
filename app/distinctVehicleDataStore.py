@@ -14,6 +14,8 @@ atlanta_collection = db['atlanta']
 distinct_atlanta_collection = db['distinctAtlanta']
 vehicle_inventory_collection = db['vehicle_inventory']
 status_collection = db['statusAtlanta']
+atlantaAis140 = db['atlantaAis140']
+atlantaAis140Status = db['atlantaAis140Status']
 
 def update_distinct_atlanta():
     try:
@@ -64,6 +66,46 @@ def atlantaStatusData():
     results = list(atlanta_collection.aggregate(pipeline))
     for doc in results:        
         status_collection.update_one(
+            {"_id": doc["_id"]},
+            {"$set": doc},
+            upsert=True
+        )
+        
+    pipeline = [
+        {"$match": {"timestamp": {"$gte": seven_days_ago, "$lte": utc_now}}},
+        {"$sort": {"timestamp": -1}},
+        {"$group": {
+            "_id": "$imei",
+            "timestamp": {"$first": "$timestamp"},
+            "ignition": {"$first": "$telemetry.ignition"},
+            "speed": {"$first": "$telemetry.speed"},
+            "date": {"$first": "$gps.date"},
+            "time": {"$first": "$gps.time"},
+            "gsm_sig": {"$first": "$network.gsmSignal"},
+            "history": {"$push": {
+                "timestamp": "$timestamp",
+                "ignition": "$telemetry.ignition",
+                "speed": "$telemetry.speed"
+            }}
+        }},
+        {"$project": {
+            "_id": 1,
+            "latest": {
+                "timestamp": "$timestamp",
+                "ignition": "$ignition",
+                "speed": "$speed",
+                "date": "$date",
+                "time": "$time",
+                "gsm_sig": "$gsm_sig"
+            },
+            "history": 1
+        }},
+    ]
+
+    atlantaais140Results = list(atlantaAis140.aggregate(pipeline))
+
+    for doc in atlantaais140Results:        
+        atlantaAis140Status.update_one(
             {"_id": doc["_id"]},
             {"$set": doc},
             upsert=True
