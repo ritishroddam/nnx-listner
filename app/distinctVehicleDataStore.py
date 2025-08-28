@@ -17,6 +17,14 @@ status_collection = db['statusAtlanta']
 atlantaAis140 = db['atlantaAis140']
 atlantaAis140Status = db['atlantaAis140Status']
 
+def _convert_date_time_emit(date):
+    if not date:
+        now = datetime.now(timezone(timedelta(hours=5, minutes=30)))
+        return now.strftime("%d%m%y"), now.strftime("%H%M%S")
+    # Convert UTC datetime to IST (UTC+5:30)
+    ist = date.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    return ist.strftime("%d%m%y"), ist.strftime("%H%M%S")
+
 def update_distinct_atlanta():
     try:
         print("Successfully running distinct Vehicle")
@@ -79,8 +87,6 @@ def atlantaStatusData():
             "timestamp": {"$first": "$timestamp"},
             "ignition": {"$first": "$telemetry.ignition"},
             "speed": {"$first": "$telemetry.speed"},
-            "date": {"$first": "$gps.date"},
-            "time": {"$first": "$gps.time"},
             "gsm_sig": {"$first": "$network.gsmSignal"},
             "history": {"$push": {
                 "date_time": "$timestamp",
@@ -94,8 +100,6 @@ def atlantaStatusData():
                 "date_time": "$timestamp",
                 "ignition": "$ignition",
                 "speed": "$speed",
-                "date": "$date",
-                "time": "$time",
                 "gsm_sig": "$gsm_sig"
             },
             "history": 1
@@ -105,7 +109,7 @@ def atlantaStatusData():
     atlantaais140Results = list(atlantaAis140.aggregate(pipeline))
 
     for doc in atlantaais140Results:
-        doc["latest"]["date"] = doc["latest"]["date"][:4] + doc["latest"]["date"][6:8]
+        doc["latest"]["date"], doc["latest"]["time"] = _convert_date_time_emit(doc["latest"]["date_time"])
         atlantaAis140Status.update_one(
             {"_id": doc["_id"]},
             {"$set": doc},
