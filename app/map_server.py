@@ -1,7 +1,6 @@
 import threading
 import socketserver
-from datetime import datetime, timedelta
-from pytz import timezone
+from datetime import datetime, timedelta, timezone
 import os
 from pymongo import MongoClient
 from flask import Flask
@@ -61,7 +60,7 @@ def storRawData(imei, raw_data):
             'LicensePlateNumber': rawLogImeiLiscenceMap.get(imei, 'Unknown'),
             'imei': imei,
             'raw_data': raw_data,
-            'timestamp': datetime.now(timezone('UTC'))
+            'timestamp': datetime.now(timezone.utc)
         })
         print(f"[DEBUG] Stored raw data for IMEI: {imei}")
     except Exception as e:
@@ -212,8 +211,8 @@ def store_data_in_mongodb(json_data):
             latestData["_id"] = json_data['imei']
             collectionLatest.replace_one({'_id': json_data['imei']}, latestData, upsert=True)
             json_data['_id'] = str(json_data['_id'])
-            json_data['date_time'] = str(json_data['date_time'])
-            json_data['timestamp'] = str(json_data['timestamp'])
+            json_data['date_time'] = str(json_data.get("date_time").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S"))
+            json_data['timestamp'] = str(json_data.get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S"))
             inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
             if inventory_data:
                 json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
@@ -323,11 +322,11 @@ def parse_json_data(data, status_prefix):
             speed_mph = float(parts[8]) if parts[8].replace('.', '', 1).isdigit() else 0.0
             speed_kmph = round(speed_mph * 1.60934, 2)
             status = parts[0]
-            ist = timezone('Asia/Kolkata')
-            date_time_str = f"{parts[10]} {parts[2]}"
-            date_time_tz = datetime.strptime(date_time_str, '%d%m%y %H%M%S')
-            date_time_ist = ist.localize(date_time_tz.replace(tzinfo=None))
-            date_time = date_time_ist.astimezone(timezone('UTC'))
+            ist = timezone(timedelta(hours=5, minutes=30))
+            date_time_str = parts[10] + parts[2]
+            dt_ist = datetime.strptime(date_time_str, "%d%m%y%H%M%S")
+            dt_ist = dt_ist.replace(tzinfo=ist)
+            date_time = dt_ist.astimezone(timezone.utc)
             print(status_prefix)
             json_data = {
                 'status': status_prefix,
@@ -369,7 +368,7 @@ def parse_json_data(data, status_prefix):
                 'localAreaCode': parts[24],
                 'cellid':  clean_cellid(parts[25]),  
                 'date_time': date_time,
-                'timestamp': datetime.now(timezone('UTC'))     
+                'timestamp': datetime.now(timezone.utc)     
             }
             return json_data
         else:

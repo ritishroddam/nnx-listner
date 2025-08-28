@@ -257,7 +257,8 @@ async def parse_for_emit(parsedData):
         "sos": parsedData.get("telemetry", {}).get("emergencyStatus"),
         "odometer": parsedData.get("telemetry", {}).get("odometer"),
         "normalSpeed": normalSpeed,
-        "slowSpeed": slowSpeed
+        "slowSpeed": slowSpeed,
+        "date_time": str(parsedData.get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S"))
     }
     return json_data
 
