@@ -1,6 +1,5 @@
 from pymongo import MongoClient
-from datetime import datetime, timedelta
-from pytz import timezone
+from datetime import datetime, timedelta, timezone
 import time
 import socketio
 from pymongo import MongoClient
@@ -56,7 +55,7 @@ def update_distinct_atlanta():
         print(f'Error updating distinct documents: {str(e)}')
         
 def atlantaStatusData():
-    utc_now = datetime.now(timezone('UTC'))
+    utc_now = datetime.now(timezone.utc)
     seven_days_ago = utc_now - timedelta(days=7)
     pipeline = [
         {"$match": {"date_time": {"$gte": seven_days_ago, "$lte": utc_now}}},
