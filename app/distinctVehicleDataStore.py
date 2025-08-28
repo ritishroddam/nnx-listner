@@ -104,7 +104,8 @@ def atlantaStatusData():
 
     atlantaais140Results = list(atlantaAis140.aggregate(pipeline))
 
-    for doc in atlantaais140Results:        
+    for doc in atlantaais140Results:
+        doc["latest"]["date"] = doc["latest"]["date"][:4] + doc["latest"]["date"][6:8]
         atlantaAis140Status.update_one(
             {"_id": doc["_id"]},
             {"$set": doc},
