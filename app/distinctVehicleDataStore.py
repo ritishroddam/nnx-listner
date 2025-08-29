@@ -79,16 +79,16 @@ def atlantaStatusData():
         )
         
     pipeline = [
-        {"$match": {"timestamp": {"$gte": seven_days_ago, "$lte": utc_now}}},
-        {"$sort": {"timestamp": -1}},
+        {"$match": {"gps.timestamp": {"$gte": seven_days_ago, "$lte": utc_now}}},
+        {"$sort": {"gps.timestamp": -1}},
         {"$group": {
             "_id": "$imei",
-            "timestamp": {"$first": "$timestamp"},
+            "timestamp": {"$first": "$gps.timestamp"},
             "ignition": {"$first": "$telemetry.ignition"},
             "speed": {"$first": "$telemetry.speed"},
             "gsm_sig": {"$first": "$network.gsmSignal"},
             "history": {"$push": {
-                "date_time": "$timestamp",
+                "date_time": "$gps.timestamp",
                 "ignition": "$telemetry.ignition",
                 "speed": "$telemetry.speed"
             }}
