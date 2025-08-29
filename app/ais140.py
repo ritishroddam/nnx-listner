@@ -315,7 +315,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
             "type": "LOCATION",
             "imei": imei,
             "LicensePlateNumber": vrn if vrn not in ("", None) else None,
-            "timestamp": ts or datetime.now(timezone.utc),  # top-level ts for indexes
+            "timestamp": datetime.now(timezone.utc),
             "vendor": g(2),
             "firmware": g(3),
             "packet": {
