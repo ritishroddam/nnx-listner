@@ -661,11 +661,15 @@ async def update_raw_log_list():
 async def ensure_indexes():
     # History queries
     await loc_coll.create_index([("imei", ASCENDING), ("timestamp", DESCENDING)])
+    await loc_coll.create_index([("imei", ASCENDING), ("gps.timestamp", DESCENDING)])
     await loc_coll.create_index([("LicensePlateNumber", ASCENDING), ("timestamp", DESCENDING)])
+    await loc_coll.create_index([("LicensePlateNumber", ASCENDING), ("gps.timestamp", DESCENDING)])
     await loc_coll.create_index([("timestamp", DESCENDING)])
+    await loc_coll.create_index([("gps.timestamp", DESCENDING)])
 
     # Latest: _id is IMEI (implicit); add ts index for dashboards
     await latest_coll.create_index([("timestamp", DESCENDING)])
+    await latest_coll.create_index([("gps.timestamp", DESCENDING)])
 
     # Raw logs TTL (30 days) on 'timestamp'
     try:
