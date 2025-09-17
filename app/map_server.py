@@ -338,7 +338,7 @@ def parse_json_data(data, status_prefix):
                 'dir1': parts[5],
                 'longitude': longitude,
                 'dir2': parts[7],
-                'speed': str(speed_kmph),
+                'speed': speed_kmph,
                 'course': parts[9],
                 'date': parts[10],
                 'checksum': parts[13] if len(parts) > 13 else '0',
