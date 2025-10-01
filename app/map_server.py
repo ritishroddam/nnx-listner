@@ -8,7 +8,6 @@ import signal
 import sys
 from datetime import datetime
 from flask_cors import CORS
-from math import radians, sin, cos, atan2
 import socketio
 import time
 from pymongo import MongoClient
