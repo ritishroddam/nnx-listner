@@ -310,6 +310,24 @@ def parse_packet(raw: str) -> Dict[str, Any]:
 
         # neighbors slice inclusive of index 45 -> [35:46]
         neighbors = _parse_neighbors(parts[35:46])
+        
+        if g(5) == "10":
+            padded_date = _pad_left(date_raw, 8)
+            ddmmyy = padded_date[:6] + padded_date[6:8] if len(padded_date) == 8 else padded_date[:6]
+            packet = {
+                'imei': imei,
+                'date': ddmmyy,
+                'time': _pad_left(time_raw, 6),
+                'latitude': str(lat),
+                'longitude': str(lon),
+                'date_time': ts,
+                'timestamp': datetime.now(timezone.utc),
+            }
+            
+            try:
+                db['sos_logs'].update_one(packet)
+            except Exception as e:
+                print("Error logging SOS alert to MongoDB:", e)
 
         doc: Dict[str, Any] = {
             "type": "LOCATION",
