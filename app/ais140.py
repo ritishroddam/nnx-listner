@@ -619,9 +619,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     if ptype == "LOCATION":
                         await latest_queue.put(parsed)
 
+                    emit_data = await parse_for_emit(parsed)
                     if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
                         _ensure_socket_connection()
-                        emit_data = await parse_for_emit(parsed)
                         if sio.connected:
                             try:
                                 sio.emit('vehicle_live_update', emit_data)

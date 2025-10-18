@@ -17,6 +17,7 @@ from math import atan2, degrees, radians, sin, cos
 import googlemaps
 import asyncio
 import re
+from alerts import dataToReportParser
 
 client_activity = {}
 last_emit_time = {}
@@ -226,6 +227,7 @@ def store_data_in_mongodb(json_data):
             json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
             if sio.connected:
                 try:
+                    dataToReportParser(json_data)
                     sio.emit('vehicle_live_update', json_data)
                     sio.emit('vehicle_update', json_data)
                 except Exception as e:
