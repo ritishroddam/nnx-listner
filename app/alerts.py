@@ -179,10 +179,10 @@ def processDataForGeofence(data):
 ALERTS = ['Speeding', 'Harsh Braking', 'Harsh Acceleration', 'GSM Signal Low', 'Internal Battery Low', 
           'Main Power Supply Dissconnect', 'Idle', 'Ignition On', 'Ignition Off', 'Geofence In', 'Geofence Out']
 
-async def dataToReportParser(data):
+def dataToReportParser(data):
     imei = data.get('imei')
     
-    vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
+    vehicleInfo = vehicleCOllection.find_one({"IMEI": imei})
     
     speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
     
