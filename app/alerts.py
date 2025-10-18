@@ -16,7 +16,7 @@ DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
 GMAPS = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
-MONGO_URI = os.getenv("MONGO_URI")
+MONGO_URI = "mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin"
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI env var is required")
 

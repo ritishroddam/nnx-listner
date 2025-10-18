@@ -29,7 +29,7 @@ last_emit_time = {}
 rawLogList = []
 rawLogImeiLiscenceMap = {}
 
-MONGO_URI = os.getenv("MONGO_URI")
+MONGO_URI = "mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin"
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI env var is required")
 
@@ -41,7 +41,6 @@ COL_HEALTH = "atlantaAis140_health"
 COL_GEOCODED = "geocoded_address"
 COL_RAW_SUBSCRIPTIONS = "raw_log_subscriptions"
 COL_VEHICLE_INVENTORY = "vehicle_inventory"
-
 # -----------------------
 # Mongo (Motor)
 # -----------------------
