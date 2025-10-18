@@ -47,6 +47,18 @@ INACTIVITY_TIMEOUT = 600
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
 
+asyncio_loop = None
+
+def start_async_loop():
+    global asyncio_loop
+    asyncio_loop = asyncio.new_event_loop()
+    threading.Thread(target=asyncio_loop.run_forever, daemon=True).start()
+
+def run_coro(coro):
+    if asyncio_loop is None:
+        start_async_loop()
+    return asyncio.run_coroutine_threadsafe(coro, asyncio_loop)
+
 def storRawData(imei, raw_data):
     try:
         try:
@@ -227,7 +239,7 @@ def store_data_in_mongodb(json_data):
             json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
             if sio.connected:
                 try:
-                    dataToReportParser(json_data)
+                    run_coro(dataToReportParser(json_data))
                     sio.emit('vehicle_live_update', json_data)
                     sio.emit('vehicle_update', json_data)
                 except Exception as e:
@@ -503,7 +515,8 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        start_async_loop()
+        run_coro(update_raw_log_list())
         lastEmitInitial()
         run_servers()
     except Exception as e:

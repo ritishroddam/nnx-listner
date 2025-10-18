@@ -66,7 +66,7 @@ async def _geocodeInternal(lat,lng):
         return "Invalid coordinates"
 
     try:
-        nearby_entries = geocodeCollection.find({
+        nearby_entries = await geocodeCollection.find({
             "lat": {"$gte": lat - 0.0045, "$lte": lat + 0.0045},
             "lng": {"$gte": lng - 0.0045, "$lte": lng + 0.0045}
         })
@@ -111,20 +111,20 @@ async def _geocodeInternal(lat,lng):
         return "Error retrieving address"
     
 
-def processDataForOverSpeed(data, vehicleInfo):
+async def processDataForOverSpeed(data, vehicleInfo):
     companyName = vehicleInfo.get('CompanyName')
     
-    company = companyCollection.find_one({'Company Name': companyName})
+    company = await companyCollection.find_one({'Company Name': companyName})
     
     if company:
         companyId = str(company.get('_id'))
         
-        users = userCollection.find({'company': companyId})
+        users = await userCollection.find({'company': companyId})
         
         userData = []
         if users:
             for user in users:
-                userConfig = userConfigCollection.find_one({'userID': user.get('_id')})
+                userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
                 
                 if userConfig:
                     if 'speeding_alerts' in userConfig.get('alerts'):
@@ -179,16 +179,16 @@ def processDataForGeofence(data):
 ALERTS = ['Speeding', 'Harsh Braking', 'Harsh Acceleration', 'GSM Signal Low', 'Internal Battery Low', 
           'Main Power Supply Dissconnect', 'Idle', 'Ignition On', 'Ignition Off', 'Geofence In', 'Geofence Out']
 
-def dataToReportParser(data):
+async def dataToReportParser(data):
     imei = data.get('imei')
     
-    vehicleInfo = vehicleCOllection.find_one({"IMEI": imei})
+    vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
     
     speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
     
     # if float(data.get('speed', '')) > speedThreshold:
     if float(data.get('speed', '')) > -1.0:
-        processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
+        await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
         
     if data.get('harsh_break', '') == '1':
         processDataForHarshBrake(data, vehicleInfo if vehicleInfo else None)
