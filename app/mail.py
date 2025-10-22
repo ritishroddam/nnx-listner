@@ -24,6 +24,7 @@ def buildVariable(company, data):
         variable['alert']['geofence']['entered'] = bool(data.get('EnteredGeofence'))
         variable['alert']['geofence']['name'] = data.get('geofenceName')
     
+    print(f"Email Variable {variable}")
     return variable
         
 def buildAndSendEmail(data, company, recepients):
