@@ -42,60 +42,70 @@ ignitionOffCollection = db['ignitionOffs']
 geofenceInCollection = db['geodenceIns']
 geofenceOutCollection = db['geofenceOuts']
 
-async def processDataForOverSpeed(data, vehicleInfo):
-    print("[DEBUG] In speed part of alerts")
-    companyName = vehicleInfo.get('CompanyName')
-    print(f"[DEBUG] Company Name: {companyName}")
-    
-    company = await companyCollection.find_one({'Company Name': companyName})
-    print(f"[DEBUG] {company}")
-    
-    if company:
-        companyId = str(company.get('_id'))
-        
-        print(f"[DEBUG] company ID: {companyId}")
-        
-        cursor = userCollection.find({'company': companyId})
-        users = [u async for u in cursor]
-        
-        print(f"[DEBUG] user query done")
-        
-        if users:
-            print(f"[DEBUG] Users: {users}")
-        else: 
-            print("No users found")
-        
-        userData = []
-        if users:
-            for user in users:
-                userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
-                
-                if userConfig:
-                    if 'speeding_alerts' in userConfig.get('alerts'):
-                        print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
-                        userData.append(
-                            {
-                                "username": user.get('username'),
-                                "email": user.get('email')
-                            }
-                        )
-        
-        print(f"[DEBUG] trying to send email with: {userData}")
-        if userData:
-            data['alertType'] = 'speed'
-            buildAndSendEmail(data, companyName, userData)
-    else:
-        print("[DEBUG] Company Not Found")
-    
-    
-    # Convert IST string to UTC datetime before saving
-    dt_str = data.get('date_time')
-    ist = timezone(timedelta(hours=5, minutes=30))
 
-    utc_dt = None
+ALERT_META = {
+    "harsh_break_alerts": {"label": "Harsh Braking", "coll": harshBrakeCollection},
+    "harsh_acceleration_alerts": {"label": "Harsh Acceleration", "coll": harshAccelerationCollection},
+    "gsm_low_alerts": {"label": "GSM Signal Low", "coll": gsmSignalLowCollection},
+    "internal_battery_low_alerts": {"label": "Internal Battery Low", "coll": internalBatterLowCollection},
+    "idle_alerts": {"label": "Idle", "coll": idleCollection},
+    "ignition_off_alerts": {"label": "Ignition Off", "coll": ignitionOffCollection},
+    "ignition_on_alerts": {"label": "Ignition On", "coll": ignitionOnCollection},
+    "main_power_supply": {"label": "Main Powersupply Disconnected", "coll": mainPowerSupplyDissconnectCollection}
+}
+
+def _ist_str_to_utc(dt_str: str) -> datetime:
+    ist = timezone(timedelta(hours=5, minutes=30))
     parsed = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S')
     parsed = parsed.replace(tzinfo=ist)
-    utc_dt = parsed.astimezone(timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+async def processDataForOverSpeed(data, vehicleInfo):
+    if vehicleInfo:
+        companyName = vehicleInfo.get('CompanyName')
+        print(f"[DEBUG] Company Name: {companyName}")
+
+        company = await companyCollection.find_one({'Company Name': companyName})
+        print(f"[DEBUG] {company}")
+
+        if company:
+            companyId = str(company.get('_id'))
+
+            print(f"[DEBUG] company ID: {companyId}")
+
+            cursor = userCollection.find({'company': companyId})
+            users = [u async for u in cursor]
+
+            print(f"[DEBUG] user query done")
+
+            if users:
+                print(f"[DEBUG] Users: {users}")
+            else: 
+                print("No users found")
+
+            userData = []
+            if users:
+                for user in users:
+                    userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
+
+                    if userConfig:
+                        if 'speeding_alerts' in userConfig.get('alerts'):
+                            print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
+                            userData.append(
+                                {
+                                    "username": user.get('username'),
+                                    "email": user.get('email')
+                                }
+                            )
+
+            print(f"[DEBUG] trying to send email with: {userData}")
+            if userData:
+                data['alertType'] = 'Speed'
+                buildAndSendEmail(data, companyName, userData)
+        else:
+            print("[DEBUG] Company Not Found")
+
+    utc_dt = _ist_str_to_utc(data.get('date_time'))
 
     speedingCollection.insert_one(
         {
@@ -108,24 +118,53 @@ async def processDataForOverSpeed(data, vehicleInfo):
             'location': data.get('address'),
         }
     )
+    
+async def process_generic_alert(data, vehicleInfo, alert_key):
+    meta = ALERT_META.get(alert_key)
+    if not meta:
+        print(f"[DEBUG] Unknown alert key: {alert_key}")
+        return
 
-def processDataForHarshBrake(data):
-    pass
+    companyName = (vehicleInfo or {}).get('CompanyName')
+    if companyName:
+        company = await companyCollection.find_one({'Company Name': companyName})
+        if company:
+            companyId = str(company.get('_id'))
+            cursor = userCollection.find({'company': companyId})
+            users = [u async for u in cursor]
 
-def processDataForHarshSpeed(data):
-    pass
+            userData: List[Dict[str, str]] = []
+            for user in users:
+                userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
+                alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+                if alert_key in alerts_list:
+                    userData.append({
+                        "username": user.get('username'),
+                        "email": user.get('email')
+                    })
 
-def processDataForGsmSig(data):
-    pass
+            print(f"[DEBUG] trying to send email with: {userData}")
+            if userData:
+                data['alertType'] = meta["label"]
+                await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
+        else:
+            print("[DEBUG] Company Not Found")
 
-def processDataForInernalBat(data):
-    pass
+    utc_dt = _ist_str_to_utc(data.get('date_time'))
 
-def processDataForMainPowerSupply(data):
-    pass
+    doc = {
+        'imei': data.get('imei'),
+        'LicensePlateNumber': (vehicleInfo or {}).get('LicensePlateNumber'),
+        'date_time': utc_dt,
+        'latitude': data.get('latitude'),
+        'longitude': data.get('longitude'),
+        'location': data.get('address'),
+    }
 
-def processDataForIdle(data):
-    pass
+    try:
+        meta["coll"].insert_one(doc)
+    except Exception as e:
+        print(f"[DEBUG] Failed to persist {alert_key}: {e}")
 
 def processDataForIgnition(data):
     pass
@@ -148,23 +187,23 @@ async def dataToReportParser(data):
         await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
         
     if data.get('harsh_break', '') == '1':
-        processDataForHarshBrake(data, vehicleInfo if vehicleInfo else None)
+        await process_generic_alert(data, vehicleInfo, "harsh_break_alerts")
         
     if data.get('harsh_speed', '') == '1':
-        processDataForHarshSpeed(data, vehicleInfo if vehicleInfo else None)
+        await process_generic_alert(data, vehicleInfo, "harsh_acceleration_alerts")
         
     if int(data.get('gsm_sig', '')) <= 8:
-        processDataForGsmSig(data, vehicleInfo if vehicleInfo else None)
+        await process_generic_alert(data, vehicleInfo, "gsm_low_alerts")
     
     if float(data.get('internal_bat', '')) <= 3.7:
-        processDataForInernalBat(data, vehicleInfo if vehicleInfo else None)
+        await process_generic_alert(data, vehicleInfo, "internal_battery_low_alerts")
         
     if data.get('main_power', '') == '0':
-        processDataForMainPowerSupply(data, vehicleInfo if vehicleInfo else None)
-        
-    processDataForIdle(data, vehicleInfo if vehicleInfo else None)
-    processDataForIgnition(data, vehicleInfo if vehicleInfo else None)
-    processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
+        await process_generic_alert(data, vehicleInfo, "main_power_supply")
+
+    # processDataForIdle(data, vehicleInfo if vehicleInfo else None)
+    # processDataForIgnition(data, vehicleInfo if vehicleInfo else None)
+    # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
     
 

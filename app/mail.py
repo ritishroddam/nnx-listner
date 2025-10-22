@@ -18,7 +18,7 @@ def buildVariable(company, data):
         }
     }
     
-    if data.get('alertType') == 'speed':
+    if data.get('alertType') == 'Speed':
         variable['alert']["speed"] = data.get('speed')
     elif data.get('alertType') == 'Geofence':
         variable['alert']['geofence']['entered'] = bool(data.get('EnteredGeofence'))
