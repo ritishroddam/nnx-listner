@@ -42,20 +42,6 @@ ignitionOffCollection = db['ignitionOffs']
 geofenceInCollection = db['geodenceIns']
 geofenceOutCollection = db['geofenceOuts']
 
-
-def _validate_coordinates(lat, lng):
-    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
-        raise ValueError(f"Invalid coordinates {lat} and {lng}")
-    
-def _calculate_bearing(coord1, coord2):
-    lat1, lon1 = radians(coord1[0]), radians(coord1[1])
-    lat2, lon2 = radians(coord2[0]), radians(coord2[1])
-    d_lon = lon2 - lon1
-    x = sin(d_lon) * cos(lat2)
-    y = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(d_lon)
-    bearing = (degrees(atan2(x, y)) + 360) % 360
-    return DIRECTIONS[int(((bearing + (BEARING_DEGREES/2)) % 360) // BEARING_DEGREES)]
-
 async def processDataForOverSpeed(data, vehicleInfo):
     print("[DEBUG] In speed part of alerts")
     companyName = vehicleInfo.get('CompanyName')
