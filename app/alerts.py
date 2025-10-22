@@ -142,6 +142,8 @@ async def processDataForOverSpeed(data, vehicleInfo):
         if userData:
             print(f"[DEBUG] trying to send email with: {userData}")
             buildAndSendEmail(data, companyName, userData)
+    else:
+        print("Company Not Found")
     
     
     speedingCollection.insert_one(
