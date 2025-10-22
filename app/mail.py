@@ -28,6 +28,7 @@ def buildVariable(company, data):
         
 def buildAndSendEmail(data, company, recepients):
     variables = buildVariable(company, data)
+    print("[DEBUG] In buildAndSendEmail")
     
     payload = { "recipients": 
         [
