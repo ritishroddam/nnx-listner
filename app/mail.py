@@ -11,8 +11,8 @@ def buildVariable(company, data):
             "vehicleNumber": data.get('LicensePlateNumber'),
             "type": data.get('alertType'),
 
-            "latitude": data.get('lat'),
-            "longitude": data.get('lng'),
+            "latitude": data.get('latitude'),
+            "longitude": data.get('longitude'),
             "location": data.get('address'),
             "timestamp": data.get('date_time')
         }

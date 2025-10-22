@@ -96,6 +96,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
         
         print(f"[DEBUG] trying to send email with: {userData}")
         if userData:
+            data['alertType'] = 'speed'
             buildAndSendEmail(data, companyName, userData)
     else:
         print("[DEBUG] Company Not Found")
