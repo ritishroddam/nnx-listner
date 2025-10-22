@@ -122,7 +122,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
     if company:
         companyId = str(company.get('_id'))
         
-        print(f"[DEBUG company ID: {companyId}]")
+        print(f"[DEBUG] company ID: {companyId}")
         
         users = await userCollection.find({'company': companyId})
         
