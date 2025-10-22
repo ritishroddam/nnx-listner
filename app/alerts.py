@@ -124,6 +124,8 @@ async def processDataForOverSpeed(data, vehicleInfo):
         
         users = await userCollection.find({'company': companyId})
         
+        print(f"[DEBUG] {users if users else "no users"}")
+        
         userData = [{
                                 "username": "Ritsh",
                                 "email": "ritishroddam@gmail.com"
@@ -132,14 +134,14 @@ async def processDataForOverSpeed(data, vehicleInfo):
             for user in users:
                 userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
                 
-                if userConfig:
-                    if 'speeding_alerts' in userConfig.get('alerts'):
-                        userData.extend(
-                            {
-                                "username": user.get('username'),
-                                "email": user.get('email')
-                            }
-                        )
+                # if userConfig:
+                #     if 'speeding_alerts' in userConfig.get('alerts'):
+                #         userData.extend(
+                #             {
+                #                 "username": user.get('username'),
+                #                 "email": user.get('email')
+                #             }
+                #         )
         
         if userData:
             print(f"[DEBUG] trying to send email with: {userData}")
