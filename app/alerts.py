@@ -102,16 +102,24 @@ async def processDataForOverSpeed(data, vehicleInfo):
         print("[DEBUG] Company Not Found")
     
     
+    # Convert IST string to UTC datetime before saving
+    dt_str = data.get('date_time')
+    ist = timezone(timedelta(hours=5, minutes=30))
+
+    utc_dt = None
+    parsed = datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S')
+    parsed = parsed.replace(tzinfo=ist)
+    utc_dt = parsed.astimezone(timezone.utc)
+
     speedingCollection.insert_one(
         {
             'imei': data.get('imei'),
             'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber') if vehicleInfo else None,
             'speed': data.get('speed'),
-            'date_time': data.get('date_time'),
+            'date_time': utc_dt,
             'latitude': data.get('latitude'),
             'longitude': data.get('longitude'),
             'location': data.get('address'),
-            
         }
     )
 
