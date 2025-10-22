@@ -149,8 +149,7 @@ async def dataToReportParser(data):
     
     speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
     
-    # if float(data.get('speed', '')) > speedThreshold:
-    if float(data.get('speed', '')) > -1.0:
+    if float(data.get('speed', '')) > speedThreshold:
         await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
         
     if data.get('harsh_break', '') == '1':
