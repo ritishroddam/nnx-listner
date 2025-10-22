@@ -187,7 +187,6 @@ async def dataToReportParser(data):
     vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
     
     speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
-    speedThreshold = 0.00
     
     # if float(data.get('speed', '')) > speedThreshold:
     if float(data.get('speed', '')) > -1.0:
