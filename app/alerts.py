@@ -56,61 +56,6 @@ def _calculate_bearing(coord1, coord2):
     bearing = (degrees(atan2(x, y)) + 360) % 360
     return DIRECTIONS[int(((bearing + (BEARING_DEGREES/2)) % 360) // BEARING_DEGREES)]
 
-async def _geocodeInternal(lat,lng):
-    try:
-        lat = float(lat)
-        lng = float(lng)
-        _validate_coordinates(lat, lng)
-    except(ValueError, TypeError) as e:
-        print(f"Invalid input: {str(e)}")
-        return "Invalid coordinates"
-
-    try:
-        nearby_entries = await geocodeCollection.find({
-            "lat": {"$gte": lat - 0.0045, "$lte": lat + 0.0045},
-            "lng": {"$gte": lng - 0.0045, "$lte": lng + 0.0045}
-        })
-        
-        nearest_entry = None
-        min_distance = 0.5 
-        
-        async for entry in nearby_entries:
-            saved_coord = (entry['lat'], entry['lng'])
-            current_coord = (lat, lng)
-            distance = geodesic(saved_coord, current_coord).km
-            
-            if distance <= min_distance:
-                nearest_entry = entry
-                min_distance = distance
-
-        if nearest_entry:
-            saved_coord = (nearest_entry['lat'], nearest_entry['lng'])
-            current_coord = (lat, lng)
-            bearing = _calculate_bearing(saved_coord, current_coord)
-            
-            return (f"{min_distance:.2f} km {bearing} from {nearest_entry['address']}"
-                      if min_distance > 0 else nearest_entry['address'])
-
-        reverse_geocode_result = GMAPS.reverse_geocode((lat, lng))
-        if not reverse_geocode_result:
-            print("Geocoding API failed")
-            return "Address unavailable"
-
-        address = reverse_geocode_result[0]['formatted_address']
-
-        await geocodeCollection.insert_one({
-            'lat': lat,
-            'lng': lng,
-            'address': address
-        })
-
-        return address
-
-    except Exception as e:
-        print(f"Geocoding error: {str(e)}")
-        return "Error retrieving address"
-    
-
 async def processDataForOverSpeed(data, vehicleInfo):
     print("[DEBUG] In speed part of alerts")
     companyName = vehicleInfo.get('CompanyName')
@@ -124,7 +69,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
         
         print(f"[DEBUG] company ID: {companyId}")
         
-        users = await userCollection.find({'company': companyId})
+        users = userCollection.find({'company': companyId})
         
         print(f"[DEBUG] user query done")
         
