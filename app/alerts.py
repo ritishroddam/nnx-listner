@@ -112,6 +112,7 @@ async def _geocodeInternal(lat,lng):
     
 
 async def processDataForOverSpeed(data, vehicleInfo):
+    print("[DEBUG] In speed part of alerts")
     companyName = vehicleInfo.get('CompanyName')
     
     company = await companyCollection.find_one({'Company Name': companyName})
@@ -180,11 +181,13 @@ ALERTS = ['Speeding', 'Harsh Braking', 'Harsh Acceleration', 'GSM Signal Low', '
           'Main Power Supply Dissconnect', 'Idle', 'Ignition On', 'Ignition Off', 'Geofence In', 'Geofence Out']
 
 async def dataToReportParser(data):
+    print("[DEBUG] Alerts Page")
     imei = data.get('imei')
     
     vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
     
     speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
+    speedThreshold = 0.00
     
     # if float(data.get('speed', '')) > speedThreshold:
     if float(data.get('speed', '')) > -1.0:
