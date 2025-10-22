@@ -87,7 +87,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
                 if userConfig:
                     if 'speeding_alerts' in userConfig.get('alerts'):
                         print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
-                        userData.extend(
+                        userData.append(
                             {
                                 "username": user.get('username'),
                                 "email": user.get('email')
