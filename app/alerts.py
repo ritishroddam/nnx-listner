@@ -69,7 +69,8 @@ async def processDataForOverSpeed(data, vehicleInfo):
         
         print(f"[DEBUG] company ID: {companyId}")
         
-        users = userCollection.find({'company': companyId})
+        cursor = userCollection.find({'company': companyId})
+        users = [u async for u in cursor]
         
         print(f"[DEBUG] user query done")
         
