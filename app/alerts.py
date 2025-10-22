@@ -114,6 +114,7 @@ async def _geocodeInternal(lat,lng):
 async def processDataForOverSpeed(data, vehicleInfo):
     print("[DEBUG] In speed part of alerts")
     companyName = vehicleInfo.get('CompanyName')
+    print(f"[DEBUG] Company Name: {companyName}")
     
     company = await companyCollection.find_one({'Company Name': companyName})
     
@@ -143,7 +144,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
             print(f"[DEBUG] trying to send email with: {userData}")
             buildAndSendEmail(data, companyName, userData)
     else:
-        print("Company Not Found")
+        print("[DEBUG] Company Not Found")
     
     
     speedingCollection.insert_one(
