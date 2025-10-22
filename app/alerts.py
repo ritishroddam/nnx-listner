@@ -107,7 +107,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
             'speed': data.get('speed'),
             'date_time': data.get('date_time'),
             'latitude': data.get('latitude'),
-            'longitude': data('longitude'),
+            'longitude': data.get('longitude'),
             'location': data.get('address'),
             
         }
