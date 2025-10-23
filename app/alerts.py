@@ -93,6 +93,7 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
             print(f"[DEBUG] trying to send email with: {userData}")
             if userData:
                 data['alertType'] = 'Idle'
+                data['alertMessage'] = idleTime
                 await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
         else:
             print("[DEBUG] Company Not Found")
