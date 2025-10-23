@@ -10,7 +10,6 @@ from datetime import datetime
 from flask_cors import CORS
 import socketio
 import time
-from pymongo import MongoClient
 import ssl
 from geopy.distance import geodesic
 from math import atan2, degrees, radians, sin, cos

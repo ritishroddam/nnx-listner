@@ -11,6 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
 from mail import buildAndSendEmail
+from parser import getData
 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
@@ -201,7 +202,37 @@ async def dataToReportParser(data):
     if data.get('main_power', '') == '0':
         await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
-    # processDataForIdle(data, vehicleInfo if vehicleInfo else None)
+    if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) > 1.00: 
+        now = datetime.now(timezone.utc)
+        datetimeMax = now - timedelta(hours = 24)
+        dateTimeFilter ={
+            'date_time': {
+                '$gte': datetimeMax,
+                '$lte': now
+            }
+        }
+        
+        projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
+        
+        records = getData(imei, dateTimeFilter, projection)
+        
+        for record in records:
+            if record.get('ignition', '') ==  '0' and float(record.get('speed', '0.00')) < 1.00:
+                continue
+            
+            lastDateTime = record.get('date_time', '')
+
+        idleTime = data.get('date_time') - lastDateTime
+        
+        if idleTime > timedelta(minutes = 10):
+            if time >= 86400:
+                time = f'{((time / 60) / 60) / 24} days'
+            elif time >= 3600:
+                time = f'{((time / 60) / 60)} hours'
+            elif time >= 60:
+                time = f'{(time / 60)} minutes'
+            # processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+        
     # processDataForIgnition(data, vehicleInfo if vehicleInfo else None)
     # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
