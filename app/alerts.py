@@ -30,6 +30,7 @@ vehicleCOllection = db['vehicle_inventory']
 companyCollection = db['customers_list']
 userCollection = db['users']
 userConfigCollection = db['userConfig']
+recentAlertsCollection = db['alert_locks']
 
 speedingCollection = db['speedingAlerts']
 harshBrakeCollection = db['harshBrakes']
@@ -61,6 +62,55 @@ def _ist_str_to_utc(dt_str: str) -> datetime:
     parsed = parsed.replace(tzinfo=ist)
     return parsed.astimezone(timezone.utc)
 
+async def processDataForIdle(data, vehicleInfo, idleTime):
+    if vehicleInfo:
+        companyName = vehicleInfo.get('CompanyName')
+        print(f"[DEBUG] Company Name: {companyName}")
+
+        company = await companyCollection.find_one({'Company Name': companyName})
+        print(f"[DEBUG] {company}")
+
+        if company:
+            companyId = str(company.get('_id'))
+
+
+            cursor = userCollection.find({'company': companyId})
+            users = [u async for u in cursor]
+
+            userData = []
+            if users:
+                for user in users:
+                    userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
+
+                    alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+
+                    if 'idle_alerts' in alerts_list:
+                        userData.append({
+                            "username": user.get('username'),
+                            "email": user.get('email')
+                        })
+
+            print(f"[DEBUG] trying to send email with: {userData}")
+            if userData:
+                data['alertType'] = 'Idle'
+                await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
+        else:
+            print("[DEBUG] Company Not Found")
+
+    utc_dt = _ist_str_to_utc(data.get('date_time'))
+
+    await idleCollection.insert_one(
+        {
+            'imei': data.get('imei'),
+            'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber') if vehicleInfo else None,
+            'alertMessage': idleTime,
+            'date_time': utc_dt,
+            'latitude': data.get('latitude'),
+            'longitude': data.get('longitude'),
+            'location': data.get('address'),
+        }
+    )
+
 async def processDataForOverSpeed(data, vehicleInfo):
     if vehicleInfo:
         companyName = vehicleInfo.get('CompanyName')
@@ -88,9 +138,11 @@ async def processDataForOverSpeed(data, vehicleInfo):
             if users:
                 for user in users:
                     userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
-
+                    
+                    alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+                    
                     if userConfig:
-                        if 'speeding_alerts' in userConfig.get('alerts'):
+                        if 'speeding_alerts' in alerts_list:
                             print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
                             userData.append(
                                 {
@@ -102,13 +154,13 @@ async def processDataForOverSpeed(data, vehicleInfo):
             print(f"[DEBUG] trying to send email with: {userData}")
             if userData:
                 data['alertType'] = 'Speed'
-                buildAndSendEmail(data, companyName, userData)
+                await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
         else:
             print("[DEBUG] Company Not Found")
 
     utc_dt = _ist_str_to_utc(data.get('date_time'))
 
-    speedingCollection.insert_one(
+    await speedingCollection.insert_one(
         {
             'imei': data.get('imei'),
             'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber') if vehicleInfo else None,
@@ -163,7 +215,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
     }
 
     try:
-        meta["coll"].insert_one(doc)
+        await meta["coll"].insert_one(doc)
     except Exception as e:
         print(f"[DEBUG] Failed to persist {alert_key}: {e}")
 
@@ -202,36 +254,46 @@ async def dataToReportParser(data):
     if data.get('main_power', '') == '0':
         await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
-    if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) > 1.00: 
-        now = datetime.now(timezone.utc)
-        datetimeMax = now - timedelta(hours = 24)
-        dateTimeFilter ={
-            'date_time': {
-                '$gte': datetimeMax,
-                '$lte': now
+    if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) > 1.00:
+        existing_lock = await recentAlertsCollection.find_one({'imei': imei, 'type': 'Idle'})
+        if not existing_lock:
+            now = datetime.now(timezone.utc)
+            datetimeMax = now - timedelta(hours = 24)
+            dateTimeFilter ={
+                'date_time': {
+                    '$gte': datetimeMax,
+                    '$lte': now
+                }
             }
-        }
-        
-        projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
-        
-        records = getData(imei, dateTimeFilter, projection)
-        
-        for record in records:
-            if record.get('ignition', '') ==  '0' and float(record.get('speed', '0.00')) < 1.00:
-                continue
-            
-            lastDateTime = record.get('date_time', '')
 
-        idleTime = data.get('date_time') - lastDateTime
-        
-        if idleTime > timedelta(minutes = 10):
-            if time >= 86400:
-                time = f'{((time / 60) / 60) / 24} days'
-            elif time >= 3600:
-                time = f'{((time / 60) / 60)} hours'
-            elif time >= 60:
-                time = f'{(time / 60)} minutes'
-            # processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+            projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
+
+            records = getData(imei, dateTimeFilter, projection)
+
+            for record in records:
+                if record.get('ignition', '') ==  '0' and float(record.get('speed', '0.00')) < 1.00:
+                    continue
+                
+                lastDateTime = record.get('date_time')
+
+            if lastDateTime:
+                dataDateTime = _ist_str_to_utc(data.get('date_time'))
+                idleTime = dataDateTime - lastDateTime
+            else:
+                idleTime = timedelta(0)
+            
+
+            if idleTime > timedelta(minutes = 10):
+                idleTime = idleTime.total_seconds()
+                
+                if idleTime >= 86400:
+                    idleTime = f'for {((idleTime / 60) / 60) / 24} days'
+                elif idleTime >= 3600:
+                    idleTime = f'for {((idleTime / 60) / 60)} hours'
+                elif idleTime >= 60:
+                    idleTime = f'for {(idleTime / 60)} minutes'
+
+                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
         
     # processDataForIgnition(data, vehicleInfo if vehicleInfo else None)
     # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
