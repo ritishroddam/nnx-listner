@@ -66,7 +66,8 @@ def buildAndSendEmail(data, company, recepients):
             {
                 'LicensePlateNumber' : data.get('LicensePlateNumber'),
                 'type': data.get('alertType'),
-                'last_sent': datetime.now(timezone.utc)
+                'imei': data.get('imei'),
+                'last_sent': datetime.now(timezone.utc),
             }
         )
     
