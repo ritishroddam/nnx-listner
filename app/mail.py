@@ -64,8 +64,8 @@ def buildAndSendEmail(data, company, recepients):
     
     if res.status == 200:
         from parser import db
-        
-        db['alertsClock'].insert_one(
+        print('[DEBUG] Saving in alert_locks')
+        db['alert_locks'].insert_one(
             {
                 'LicensePlateNumber' : data.get('LicensePlateNumber'),
                 'type': data.get('alertType'),
