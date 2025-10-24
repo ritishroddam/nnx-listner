@@ -273,9 +273,9 @@ async def dataToReportParser(data):
 
             for record in records:
                 if record.get('ignition', '') ==  '0' and float(record.get('speed', '0.00')) < 1.00:
+                    lastDateTime = record.get('date_time')
                     continue
                 
-                lastDateTime = record.get('date_time')
                 break
 
             if lastDateTime:
