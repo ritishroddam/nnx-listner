@@ -65,7 +65,7 @@ def buildAndSendEmail(data, company, recepients):
     if res.status == 200:
         from parser import db
         print('[DEBUG] Saving in alert_locks')
-        db['alert_locks'].insert_one(
+        var = db['alert_locks'].insert_one(
             {
                 'LicensePlateNumber' : data.get('LicensePlateNumber'),
                 'type': data.get('alertType'),
@@ -73,5 +73,6 @@ def buildAndSendEmail(data, company, recepients):
                 'last_sent': datetime.now(timezone.utc),
             }
         )
+        print(var.acknowledged)  
     
     print(data.decode("utf-8"))
