@@ -59,7 +59,7 @@ def buildAndSendEmail(data, company, recepients):
 
     conn.request("POST", "/api/v5/email/send", body, headers)
     res = conn.getresponse()
-    data = res.read()
+    emailData = res.read()
     print(res.status, res.reason)
     
     if res.status == 200:
@@ -75,4 +75,4 @@ def buildAndSendEmail(data, company, recepients):
         )
         print(var.acknowledged)  
     
-    print(data.decode("utf-8"))
+    print(emailData.decode("utf-8"))
