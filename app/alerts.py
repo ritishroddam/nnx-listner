@@ -270,7 +270,7 @@ async def dataToReportParser(data):
             projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
 
             records = getData(imei, dateTimeFilter, projection)
-
+            
             for record in records:
                 if record.get('ignition', '') ==  '0' and float(record.get('speed', '0.00')) < 1.00:
                     lastDateTime = record.get('date_time')
