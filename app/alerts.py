@@ -276,6 +276,7 @@ async def dataToReportParser(data):
                     continue
                 
                 lastDateTime = record.get('date_time')
+                break
 
             if lastDateTime:
                 dataDateTime = _ist_str_to_utc(data.get('date_time'))
