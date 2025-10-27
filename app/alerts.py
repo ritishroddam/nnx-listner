@@ -307,7 +307,8 @@ async def dataToAlertParser(data):
             projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
 
             records = getData(imei, dateTimeFilter, projection)
-
+            lastDateTime = None
+            
             for record in records:
                 if str(record.get('ignition', '')) ==  '1' and float(record.get('speed', '0.00')) < 1.00:
                     lastDateTime = record.get('date_time')
