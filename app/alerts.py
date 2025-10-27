@@ -268,6 +268,9 @@ async def dataToAlertParser(data):
         speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
         print("[DEBUG] Successfully fetched speed threshold")
         
+        print(f'[DEBUG] {data.get('speed', '0.00')}')
+        print(f'[DEBUG] {data}')
+        
         if float(data.get('speed', '0.00')) > speedThreshold:
             print('[DEBUG] Successfully converted st speed to float')
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
