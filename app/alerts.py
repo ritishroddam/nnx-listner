@@ -334,14 +334,24 @@ async def dataToAlertParser(data):
 
                 await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
 
-        latest = await db['atlantaLatest'].find_one({'_id': imei})
+        date_time = _ist_str_to_utc(data.get('date_time'))
+        latest = await db['atlanta'].find_one(
+                {
+                    'imei': imei, 
+                    'date_time': {'$lt': date_time}
+                }, sort=[('date_time', DESCENDING)]
+            )
+        
         if not latest:
-            rawAis140 = await db['atlantaAis140_latest'].find_one({'_id': imei})
-
-            if not rawAis140:
+            raw_ais140 = await db['atlantaAis140'].find_one(
+                    {
+                        'imei': imei, 
+                        'gps.timestamp': {'$lt': date_time}
+                    }, sort=[('gps.timestamp', DESCENDING)]
+                )
+            if not raw_ais140:
                 return
-
-            latest = atlantaAis140ToFront(rawAis140)
+            latest = atlantaAis140ToFront(raw_ais140)
 
         if str(data.get('ignition', '')) != str(latest.get('ignition', '')):
             if str(data.get('ignition', '')) == '1':
