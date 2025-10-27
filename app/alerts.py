@@ -345,8 +345,10 @@ async def dataToAlertParser(data):
 
         if str(data.get('ignition', '')) != str(latest.get('ignition', '')):
             if str(data.get('ignition', '')) == '1':
+                print(f"[DEBUG] Sending ignition on alert for {imei} ")
                 await process_generic_alert(data, vehicleInfo, "ignition_on_alerts")
             else:
+                print(f"[DEBUG] Sending ignition off alert for {imei} ")
                 await process_generic_alert(data, vehicleInfo, "ignition_off_alerts")
         # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
