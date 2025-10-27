@@ -63,44 +63,46 @@ def _ist_str_to_utc(dt_str: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 async def processDataForIdle(data, vehicleInfo, idleTime):
-    if vehicleInfo:
-        companyName = vehicleInfo.get('CompanyName')
-        print(f"[DEBUG] Company Name: {companyName}")
+    existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
+    if not existing_lock:
+        if vehicleInfo:
+            companyName = vehicleInfo.get('CompanyName')
+            print(f"[DEBUG] Company Name: {companyName}")
 
-        company = await companyCollection.find_one({'Company Name': companyName})
-        print(f"[DEBUG] {company}")
+            company = await companyCollection.find_one({'Company Name': companyName})
+            print(f"[DEBUG] {company}")
 
-        if company:
-            companyId = str(company.get('_id'))
+            if company:
+                companyId = str(company.get('_id'))
 
 
-            cursor = userCollection.find({'company': companyId})
-            users = [u async for u in cursor]
+                cursor = userCollection.find({'company': companyId})
+                users = [u async for u in cursor]
 
-            userData = []
-            if users:
-                for user in users:
-                    disabled = int(user.get('disabled') or 0)
-                    if disabled == 1:
-                        continue
-                    
-                    userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
+                userData = []
+                if users:
+                    for user in users:
+                        disabled = int(user.get('disabled') or 0)
+                        if disabled == 1:
+                            continue
+                        
+                        userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
 
-                    alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+                        alerts_list = (userConfig.get('alerts') if userConfig else []) or []
 
-                    if 'idle_alerts' in alerts_list:
-                        userData.append({
-                            "username": user.get('username'),
-                            "email": user.get('email')
-                        })
+                        if 'idle_alerts' in alerts_list:
+                            userData.append({
+                                "username": user.get('username'),
+                                "email": user.get('email')
+                            })
 
-            print(f"[DEBUG] trying to send email with: {userData}")
-            if userData:
-                data['alertType'] = 'Idle'
-                data['alertMessage'] = idleTime
-                await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
-        else:
-            print("[DEBUG] Company Not Found")
+                print(f"[DEBUG] trying to send email with: {userData}")
+                if userData:
+                    data['alertType'] = 'Idle'
+                    data['alertMessage'] = idleTime
+                    await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
+            else:
+                print("[DEBUG] Company Not Found")
 
     utc_dt = _ist_str_to_utc(data.get('date_time'))
 
@@ -117,54 +119,56 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
     )
 
 async def processDataForOverSpeed(data, vehicleInfo):
-    if vehicleInfo:
-        companyName = vehicleInfo.get('CompanyName')
-        print(f"[DEBUG] Company Name: {companyName}")
+    existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
+    if not existing_lock:
+        if vehicleInfo:
+            companyName = vehicleInfo.get('CompanyName')
+            print(f"[DEBUG] Company Name: {companyName}")
 
-        company = await companyCollection.find_one({'Company Name': companyName})
-        print(f"[DEBUG] {company}")
+            company = await companyCollection.find_one({'Company Name': companyName})
+            print(f"[DEBUG] {company}")
 
-        if company:
-            companyId = str(company.get('_id'))
+            if company:
+                companyId = str(company.get('_id'))
 
-            print(f"[DEBUG] company ID: {companyId}")
+                print(f"[DEBUG] company ID: {companyId}")
 
-            cursor = userCollection.find({'company': companyId})
-            users = [u async for u in cursor]
+                cursor = userCollection.find({'company': companyId})
+                users = [u async for u in cursor]
 
-            print(f"[DEBUG] user query done")
+                print(f"[DEBUG] user query done")
 
-            if users:
-                print(f"[DEBUG] Users: {users}")
-            else: 
-                print("No users found")
+                if users:
+                    print(f"[DEBUG] Users: {users}")
+                else: 
+                    print("No users found")
 
-            userData = []
-            if users:
-                for user in users:
-                    disabled = int(user.get('disabled') or 0)
-                    if disabled == 1:
-                        continue
-                    userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
-                    
-                    alerts_list = (userConfig.get('alerts') if userConfig else []) or []
-                    
-                    if userConfig:
-                        if 'speeding_alerts' in alerts_list:
-                            print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
-                            userData.append(
-                                {
-                                    "username": user.get('username'),
-                                    "email": user.get('email')
-                                }
-                            )
+                userData = []
+                if users:
+                    for user in users:
+                        disabled = int(user.get('disabled') or 0)
+                        if disabled == 1:
+                            continue
+                        userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
 
-            print(f"[DEBUG] trying to send email with: {userData}")
-            if userData:
-                data['alertType'] = 'Speed'
-                await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
-        else:
-            print("[DEBUG] Company Not Found")
+                        alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+
+                        if userConfig:
+                            if 'speeding_alerts' in alerts_list:
+                                print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
+                                userData.append(
+                                    {
+                                        "username": user.get('username'),
+                                        "email": user.get('email')
+                                    }
+                                )
+
+                print(f"[DEBUG] trying to send email with: {userData}")
+                if userData:
+                    data['alertType'] = 'Speed'
+                    await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
+            else:
+                print("[DEBUG] Company Not Found")
 
     utc_dt = _ist_str_to_utc(data.get('date_time'))
 
@@ -186,33 +190,35 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
         print(f"[DEBUG] Unknown alert key: {alert_key}")
         return
 
-    companyName = (vehicleInfo or {}).get('CompanyName')
-    if companyName:
-        company = await companyCollection.find_one({'Company Name': companyName})
-        if company:
-            companyId = str(company.get('_id'))
-            cursor = userCollection.find({'company': companyId})
-            users = [u async for u in cursor]
-
-            userData: List[Dict[str, str]] = []
-            for user in users:
-                disabled = int(user.get('disabled') or 0)
-                if disabled == 1:
-                    continue
-                userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
-                alerts_list = (userConfig.get('alerts') if userConfig else []) or []
-                if alert_key in alerts_list:
-                    userData.append({
-                        "username": user.get('username'),
-                        "email": user.get('email')
-                    })
-
-            print(f"[DEBUG] trying to send email with: {userData}")
-            if userData:
-                data['alertType'] = meta["label"]
-                await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
-        else:
-            print("[DEBUG] Company Not Found")
+    existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
+    if not existing_lock:
+        companyName = (vehicleInfo or {}).get('CompanyName')
+        if companyName:
+            company = await companyCollection.find_one({'Company Name': companyName})
+            if company:
+                companyId = str(company.get('_id'))
+                cursor = userCollection.find({'company': companyId})
+                users = [u async for u in cursor]
+    
+                userData: List[Dict[str, str]] = []
+                for user in users:
+                    disabled = int(user.get('disabled') or 0)
+                    if disabled == 1:
+                        continue
+                    userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
+                    alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+                    if alert_key in alerts_list:
+                        userData.append({
+                            "username": user.get('username'),
+                            "email": user.get('email')
+                        })
+    
+                print(f"[DEBUG] trying to send email with: {userData}")
+                if userData:
+                    data['alertType'] = meta["label"]
+                    await asyncio.to_thread(buildAndSendEmail, data, companyName, userData)
+            else:
+                print("[DEBUG] Company Not Found")
 
     utc_dt = _ist_str_to_utc(data.get('date_time'))
 
@@ -266,46 +272,44 @@ async def dataToReportParser(data):
         await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
     if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) < 1.00:
-        existing_lock = await recentAlertsCollection.find_one({'imei': imei, 'type': 'Idle'})
-        if not existing_lock:
-            now = datetime.now(timezone.utc)
-            datetimeMax = now - timedelta(hours = 24)
-            dateTimeFilter ={
-                'date_time': {
-                    '$gte': datetimeMax,
-                    '$lte': now
-                }
+        now = datetime.now(timezone.utc)
+        datetimeMax = now - timedelta(hours = 24)
+        dateTimeFilter ={
+            'date_time': {
+                '$gte': datetimeMax,
+                '$lte': now
             }
+        }
 
-            projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
+        projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
 
-            records = getData(imei, dateTimeFilter, projection)
+        records = getData(imei, dateTimeFilter, projection)
             
-            for record in records:
-                if record.get('ignition', '') ==  '1' and float(record.get('speed', '0.00')) < 1.00:
-                    lastDateTime = record.get('date_time')
-                    continue
-                
-                break
-
-            if lastDateTime:
-                dataDateTime = _ist_str_to_utc(data.get('date_time'))
-                idleTime = dataDateTime - lastDateTime
-            else:
-                idleTime = timedelta(0)
+        for record in records:
+            if record.get('ignition', '') ==  '1' and float(record.get('speed', '0.00')) < 1.00:
+                lastDateTime = record.get('date_time')
+                continue
             
+            break
 
-            if idleTime > timedelta(minutes = 10):
-                idleTime = idleTime.total_seconds()
-                
-                if idleTime >= 86400:
-                    idleTime = f'for {((idleTime / 60) / 60) / 24} days'
-                elif idleTime >= 3600:
-                    idleTime = f'for {((idleTime / 60) / 60)} hours'
-                elif idleTime >= 60:
-                    idleTime = f'for {(idleTime / 60)} minutes'
+        if lastDateTime:
+            dataDateTime = _ist_str_to_utc(data.get('date_time'))
+            idleTime = dataDateTime - lastDateTime
+        else:
+            idleTime = timedelta(0)
+        
 
-                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+        if idleTime > timedelta(minutes = 10):
+            idleTime = idleTime.total_seconds()
+            
+            if idleTime >= 86400:
+                idleTime = f'for {((idleTime / 60) / 60) / 24} days'
+            elif idleTime >= 3600:
+                idleTime = f'for {((idleTime / 60) / 60)} hours'
+            elif idleTime >= 60:
+                idleTime = f'for {(idleTime / 60)} minutes'
+
+            await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
         
     # processDataForIgnition(data, vehicleInfo if vehicleInfo else None)
     # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
