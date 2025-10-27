@@ -11,6 +11,8 @@ from geopy.distance import geodesic
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
+from alerts import dataToAlertParser
+
 # -----------------------
 # Config
 # -----------------------
@@ -623,6 +625,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         _ensure_socket_connection()
                         if sio.connected:
                             try:
+                                await dataToAlertParser(emit_data)
                                 sio.emit('vehicle_live_update', emit_data)
                                 sio.emit('vehicle_update', emit_data)
                             except Exception as e:

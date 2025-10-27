@@ -199,7 +199,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
                 companyId = str(company.get('_id'))
                 cursor = userCollection.find({'company': companyId})
                 users = [u async for u in cursor]
-    
+
                 userData: List[Dict[str, str]] = []
                 for user in users:
                     disabled = int(user.get('disabled') or 0)
@@ -212,7 +212,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
                             "username": user.get('username'),
                             "email": user.get('email')
                         })
-    
+
                 print(f"[DEBUG] trying to send email with: {userData}")
                 if userData:
                     data['alertType'] = meta["label"]
@@ -245,7 +245,7 @@ def processDataForGeofence(data):
 ALERTS = ['Speeding', 'Harsh Braking', 'Harsh Acceleration', 'GSM Signal Low', 'Internal Battery Low', 
           'Main Power Supply Dissconnect', 'Idle', 'Ignition On', 'Ignition Off', 'Geofence In', 'Geofence Out']
 
-async def dataToReportParser(data):
+async def dataToAlertParser(data):
     print("[DEBUG] Alerts Page")
     imei = data.get('imei')
     
