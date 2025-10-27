@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
 from mail import buildAndSendEmail
-from parser import getData
+from parser import getData, atlantaAis140ToFront
 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
@@ -247,10 +247,6 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
     
     except Exception as e:
         print(f"[ERROR] in process_generic_alert: {e}")
-        
-
-def processDataForIgnition(data):
-    pass
 
 def processDataForGeofence(data):
     pass
@@ -337,9 +333,22 @@ async def dataToAlertParser(data):
                     idleTime = f'for {(idleTime / 60)} minutes'
 
                 await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
-        
-    # processDataForIgnition(data, vehicleInfo if vehicleInfo else None)
-    # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
+
+        latest = await db['atlantaLatest'].find_one({'_id': imei})
+        if not latest:
+            rawAis140 = await db['atlantaAis140_latest'].find_one({'_id': imei})
+
+            if not rawAis140:
+                return
+
+            latest = atlantaAis140ToFront(rawAis140)
+
+        if str(data.get('ignition', '')) != str(latest.get('ignition', '')):
+            if str(data.get('ignition', '')) == '1':
+                process_generic_alert(data, vehicleInfo, "ignition_on_alerts")
+            else:
+                process_generic_alert(data, vehicleInfo, "ignition_off_alerts")
+        # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
     except Exception as e:
         print(f"[ERROR] in dataToAlertParser: {e}")
