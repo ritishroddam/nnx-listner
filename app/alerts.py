@@ -262,6 +262,9 @@ async def dataToAlertParser(data):
     try:
         print("[DEBUG] Alerts Page")
         imei = data.get('imei')
+        
+        if imei == '863070047070049':
+            print('[DEBUG] alerts for ais140 ')
 
         vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
 
