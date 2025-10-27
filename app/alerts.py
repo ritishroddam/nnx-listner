@@ -120,7 +120,7 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
         )
         
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] in processDataForIdle: {e}")
 
 async def processDataForOverSpeed(data, vehicleInfo):
     try:
@@ -190,7 +190,7 @@ async def processDataForOverSpeed(data, vehicleInfo):
         )
         
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] in processDataForOverSpeed: {e}")
     
 async def process_generic_alert(data, vehicleInfo, alert_key):
     try:
@@ -246,7 +246,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
             print(f"[DEBUG] Failed to persist {alert_key}: {e}")
     
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] in process_generic_alert: {e}")
         
 
 def processDataForIgnition(data):
@@ -329,4 +329,4 @@ async def dataToAlertParser(data):
     # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] in dataToAlertParser: {e}")
