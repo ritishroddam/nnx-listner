@@ -323,16 +323,16 @@ async def dataToAlertParser(data):
                 idleTime = timedelta(0)
 
 
-            if idleTime > timedelta(minutes = 10):
-                idleTime = idleTime.total_seconds()
-
-                if idleTime >= 86400:
-                    idleTime = f'for {((idleTime / 60) / 60) / 24} days'
-                elif idleTime >= 3600:
-                    idleTime = f'for {((idleTime / 60) / 60)} hours'
-                elif idleTime >= 60:
-                    idleTime = f'for {(idleTime / 60)} minutes'
-
+            idleTime = int(idleTime.total_seconds() // 60)
+            
+            if 10 <= idleTime < 60 and (idleTime % 10) == 0:
+                idleTime = f'for {idleTime} minutes'
+                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+            elif 60 <= idleTime <= 1440 and (idleTime % 60) == 0:
+                idleTime = f'for {(idleTime // 60)} Hours'
+                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+            elif idleTime >= 1440 and (idleTime % 60) == 0:
+                idleTime = f'for {(idleTime // 1440)} days'
                 await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
 
         date_time = _ist_str_to_utc(data.get('date_time'))
