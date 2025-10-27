@@ -266,8 +266,10 @@ async def dataToAlertParser(data):
         vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
 
         speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
-
-        if float(data.get('speed', '')) > speedThreshold:
+        print("[DEBUG] Successfully fetched speed threshold")
+        
+        if float(data.get('speed', '0.00')) > speedThreshold:
+            print('[DEBUG] Successfully converted st speed to float')
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
 
         if data.get('harsh_break', '') == '1':
@@ -280,6 +282,7 @@ async def dataToAlertParser(data):
             await process_generic_alert(data, vehicleInfo, "gsm_low_alerts")
 
         if float(data.get('internal_bat', '')) <= 3.7:
+            print('[DEBUG] successfully converted internal bat reading')
             await process_generic_alert(data, vehicleInfo, "internal_battery_low_alerts")
 
         if data.get('main_power', '') == '0':
