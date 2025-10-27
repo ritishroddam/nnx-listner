@@ -80,6 +80,10 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
             userData = []
             if users:
                 for user in users:
+                    disabled = int(user.get('disabled') or 0)
+                    if disabled == 1:
+                        continue
+                    
                     userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
 
                     alerts_list = (userConfig.get('alerts') if userConfig else []) or []
@@ -138,6 +142,9 @@ async def processDataForOverSpeed(data, vehicleInfo):
             userData = []
             if users:
                 for user in users:
+                    disabled = int(user.get('disabled') or 0)
+                    if disabled == 1:
+                        continue
                     userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
                     
                     alerts_list = (userConfig.get('alerts') if userConfig else []) or []
@@ -189,6 +196,9 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
 
             userData: List[Dict[str, str]] = []
             for user in users:
+                disabled = int(user.get('disabled') or 0)
+                if disabled == 1:
+                    continue
                 userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
                 alerts_list = (userConfig.get('alerts') if userConfig else []) or []
                 if alert_key in alerts_list:
