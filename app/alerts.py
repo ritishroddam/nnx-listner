@@ -263,7 +263,7 @@ async def dataToAlertParser(data):
         print("[DEBUG] Alerts Page")
         imei = data.get('imei')
         
-        print(f'[DEBUG] {imei}')
+        print(f'[DEBUG] {imei}hello')
         if imei == '863070047070049':
             print('[DEBUG] alerts for ais140 ')
 
