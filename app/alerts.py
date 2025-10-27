@@ -274,7 +274,6 @@ async def dataToAlertParser(data):
         print(f'[DEBUG] {data.get('speed', '0.00')}')
         
         if float(data.get('speed', '0.00')) > speedThreshold:
-            print('[DEBUG] Successfully converted st speed to float')
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
 
         if data.get('harsh_break', '') == '1':
@@ -288,15 +287,14 @@ async def dataToAlertParser(data):
 
         try:
             if float(data.get('internal_bat')) <= 3.7:
-                print('[DEBUG] successfully converted internal bat reading')
                 await process_generic_alert(data, vehicleInfo, "internal_battery_low_alerts")
         except Exception as e:
             print('[ERROR] Not a valid internal battery value')
 
-        if data.get('main_power', '') == '0':
+        if str(data.get('main_power', '')) == '0':
             await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
-        if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) < 1.00:
+        if str(data.get('ignition', '')) ==  '1' and float(data.get('speed', '0.00')) < 1.00:
             
             if imei == '863070047070049':
                 print('[DEBUG] idle for ais140 ')
@@ -315,7 +313,7 @@ async def dataToAlertParser(data):
             records = getData(imei, dateTimeFilter, projection)
 
             for record in records:
-                if record.get('ignition', '') ==  '1' and float(record.get('speed', '0.00')) < 1.00:
+                if str(record.get('ignition', '')) ==  '1' and float(record.get('speed', '0.00')) < 1.00:
                     lastDateTime = record.get('date_time')
                     continue
                 
