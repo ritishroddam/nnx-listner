@@ -117,7 +117,7 @@ def getData(imei, date_filter, projection):
 
     converted = []
     for doc in ais140_data:
-        flat_doc = atlantaAis140ToFront(doc, include_address=False)
+        flat_doc = atlantaAis140ToFront(doc)
         out_doc = {}
         for field in wanted_fields:
             if field in flat_doc:
