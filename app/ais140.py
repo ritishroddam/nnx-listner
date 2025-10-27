@@ -242,24 +242,43 @@ async def parse_for_emit(parsedData):
         slowSpeed = 40.0
         normalSpeed = 60.0
     address = await _geocodeInternal(parsedData.get("gps", {}).get("lat"), parsedData.get("gps", {}).get("lon"))
+    
+    gps = parsedData.get("gps", {}) or {}
+    telemetry = parsedData.get("telemetry", {}) or {}
+    network = parsedData.get("network", {}) or {}
+    packet = parsedData.get("packet", {}) or {}
+    packet_id = str(packet.get("id", ""))
+    
     json_data = {
         "imei": parsedData.get("imei"),
         "LicensePlateNumber": licensePlateNumber,
         "VehicleType": vehicleType,
-        "speed": parsedData.get("telemetry", {}).get("speed"),
-        "latitude": parsedData.get("gps", {}).get("lat"),
-        "longitude": parsedData.get("gps", {}).get("lon"),
+        "speed": telemetry.get("speed"),
+        "latitude": gps.get("lat"),
+        "dir1": gps.get("latDir"),
+        "longitude": gps.get("lon"),
+        "dir2": gps.get("lonDir"),
         "date": date,
         "time": time,
-        "course": parsedData.get("gps", {}).get("heading"),
+        "course": gps.get("heading"),
+        "ignition": telemetry.get("ignition"),
+        "gsm_sig": network.get("gsmSignal"),
+        "sos": telemetry.get("emergencyStatus"),
+        "odometer": telemetry.get("odometer"),
+        "main_power": telemetry.get("mainPower"),
+        "harsh_speed": "1" if packet_id == "14" else "0",
+        "harsh_break": "1" if packet_id == "13" else "0",
+        "adc_voltage": telemetry.get("mainBatteryVoltage"),
+        "internal_bat": telemetry.get("internalBatteryVoltage"),
+        "mobCountryCode": network.get("mcc"),
+        "mobNetworkCode": network.get("mnc"),
+        "localAreaCode": network.get("lac"),
+        "cellid": network.get("cellId"),
+        "date_time": str(parsedData.get("gps", {}).get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S")),
+        "timestamp": parsedData.get("timestamp"),
         "address": address,
-        "ignition": parsedData.get("telemetry", {}).get("ignition"),
-        "gsm_sig": parsedData.get("network", {}).get("gsmSignal"),
-        "sos": parsedData.get("telemetry", {}).get("emergencyStatus"),
-        "odometer": parsedData.get("telemetry", {}).get("odometer"),
         "normalSpeed": normalSpeed,
         "slowSpeed": slowSpeed,
-        "date_time": str(parsedData.get("gps", {}).get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S"))
     }
     return json_data
 
