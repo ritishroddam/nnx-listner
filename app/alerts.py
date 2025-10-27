@@ -255,7 +255,7 @@ async def dataToReportParser(data):
     if data.get('main_power', '') == '0':
         await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
-    if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) > 1.00:
+    if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) < 1.00:
         existing_lock = await recentAlertsCollection.find_one({'imei': imei, 'type': 'Idle'})
         if not existing_lock:
             now = datetime.now(timezone.utc)
@@ -272,7 +272,7 @@ async def dataToReportParser(data):
             records = getData(imei, dateTimeFilter, projection)
             
             for record in records:
-                if record.get('ignition', '') ==  '0' and float(record.get('speed', '0.00')) < 1.00:
+                if record.get('ignition', '') ==  '1' and float(record.get('speed', '0.00')) < 1.00:
                     lastDateTime = record.get('date_time')
                     continue
                 
