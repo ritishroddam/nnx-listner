@@ -284,7 +284,7 @@ async def dataToAlertParser(data):
         if int(data.get('gsm_sig', '')) <= 8:
             await process_generic_alert(data, vehicleInfo, "gsm_low_alerts")
 
-        if float(data.get('internal_bat', '')) <= 3.7:
+        if float(data.get('internal_bat')) <= 3.7:
             print('[DEBUG] successfully converted internal bat reading')
             await process_generic_alert(data, vehicleInfo, "internal_battery_low_alerts")
 
