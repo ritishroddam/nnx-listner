@@ -625,6 +625,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         _ensure_socket_connection()
                         if sio.connected:
                             try:
+                                print("[DEBUG] sending Data of AIS140 Device for alerts")
                                 await dataToAlertParser(emit_data)
                                 sio.emit('vehicle_live_update', emit_data)
                                 sio.emit('vehicle_update', emit_data)
