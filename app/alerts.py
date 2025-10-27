@@ -269,7 +269,6 @@ async def dataToAlertParser(data):
         print("[DEBUG] Successfully fetched speed threshold")
         
         print(f'[DEBUG] {data.get('speed', '0.00')}')
-        print(f'[DEBUG] {data}')
         
         if float(data.get('speed', '0.00')) > speedThreshold:
             print('[DEBUG] Successfully converted st speed to float')
@@ -295,6 +294,10 @@ async def dataToAlertParser(data):
             await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
         if data.get('ignition', '') ==  '1' and float(data.get('speed', '0.00')) < 1.00:
+            
+            if imei == '863070047070049':
+                print('[DEBUG] idle for ais140 ')
+            
             now = datetime.now(timezone.utc)
             datetimeMax = now - timedelta(hours = 24)
             dateTimeFilter ={
