@@ -203,8 +203,10 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
         if not existing_lock:
             companyName = vehicleInfo.get('CompanyName')
             if companyName:
+                print(f'Company name for {data.get('LicensePlateNumber') is {companyName}}')
                 company = await companyCollection.find_one({'Company Name': companyName})
                 if company:
+                    print(f'Company data for {data.get('LicensePlateNumber') is {company}}')
                     companyId = str(company.get('_id'))
                     cursor = userCollection.find({'company': companyId})
                     users = [u async for u in cursor]
