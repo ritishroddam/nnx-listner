@@ -126,7 +126,7 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
 
 async def processDataForOverSpeed(data, vehicleInfo):
     try:
-        existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
+        existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Speed'})
         if not existing_lock:
             if vehicleInfo:
                 companyName = vehicleInfo.get('CompanyName')
@@ -201,7 +201,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
             print(f"[DEBUG] Unknown alert key: {alert_key}")
             return
 
-        existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
+        existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': meta["label"]})
         if not existing_lock:
             companyName = vehicleInfo.get('CompanyName')
             if companyName:
