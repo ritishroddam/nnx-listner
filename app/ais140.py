@@ -345,7 +345,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
             }
             
             try:
-                db['sos_logs'].update_one(packet)
+                db['sos_logs'].insert_one(packet)
             except Exception as e:
                 print("Error logging SOS alert to MongoDB:", e)
 
