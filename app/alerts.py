@@ -233,7 +233,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
 
         doc = {
             'imei': data.get('imei'),
-            'LicensePlateNumber': (vehicleInfo or {}).get('LicensePlateNumber'),
+            'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber'),
             'date_time': utc_dt,
             'latitude': data.get('latitude'),
             'longitude': data.get('longitude'),
