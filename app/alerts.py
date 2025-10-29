@@ -43,6 +43,7 @@ ignitionOnCollection = db['ignitionOns']
 ignitionOffCollection = db['ignitionOffs']
 geofenceInCollection = db['geodenceIns']
 geofenceOutCollection = db['geofenceOuts']
+panicCollection = db['panic']
 
 
 ALERT_META = {
@@ -53,7 +54,8 @@ ALERT_META = {
     "idle_alerts": {"label": "Idle", "coll": idleCollection},
     "ignition_off_alerts": {"label": "Ignition Off", "coll": ignitionOffCollection},
     "ignition_on_alerts": {"label": "Ignition On", "coll": ignitionOnCollection},
-    "main_power_supply": {"label": "Main Powersupply Disconnected", "coll": mainPowerSupplyDissconnectCollection}
+    "main_power_supply": {"label": "Main Powersupply Disconnected", "coll": mainPowerSupplyDissconnectCollection},
+    "panic": {"label": "Panic", "coll": panicCollection}
 }
 
 def _ist_str_to_utc(dt_str: str) -> datetime:
@@ -220,7 +222,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
                             continue
                         userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
                         alerts_list = (userConfig.get('alerts') if userConfig else []) or []
-                        if alert_key in alerts_list:
+                        if alert_key in alerts_list or alert_key in ['panic', 'main_power_supply']:
                             userData.append({
                                 "username": user.get('username'),
                                 "email": user.get('email')
