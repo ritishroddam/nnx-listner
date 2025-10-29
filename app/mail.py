@@ -73,6 +73,6 @@ def buildAndSendEmail(data, company, recepients):
                 'last_sent': datetime.now(timezone.utc),
             }
         )
-        print(var.acknowledged)  
+        print(var.acknowledged)
     
     print(emailData.decode("utf-8"))
