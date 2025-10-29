@@ -269,16 +269,16 @@ async def dataToAlertParser(data):
         
         print(f'[DEBUG] {data.get('speed', '0.00')}')
         
-        if float(data.get('speed', '0.00')) > speedThreshold:
+        if float(data.get('speed')) > speedThreshold:
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
 
-        if data.get('harsh_break', '') == '1':
+        if data.get('harsh_break') == '1':
             await process_generic_alert(data, vehicleInfo, "harsh_break_alerts")
 
-        if data.get('harsh_speed', '') == '1':
+        if data.get('harsh_speed') == '1':
             await process_generic_alert(data, vehicleInfo, "harsh_acceleration_alerts")
 
-        if int(data.get('gsm_sig', '')) <= 8:
+        if int(data.get('gsm_sig')) <= 8:
             await process_generic_alert(data, vehicleInfo, "gsm_low_alerts")
 
         try:
@@ -287,10 +287,10 @@ async def dataToAlertParser(data):
         except Exception as e:
             print('[ERROR] Not a valid internal battery value')
 
-        if str(data.get('main_power', '')) == '0':
+        if str(data.get('main_power')) == '0':
             await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
-        if str(data.get('ignition', '')) ==  '1' and float(data.get('speed', '0.00')) < 1.00:
+        if str(data.get('ignition')) ==  '1' and float(data.get('speed', '0.00')) < 1.00:
             
             if imei == '863070047070049':
                 print('[DEBUG] idle for ais140 ')
@@ -354,8 +354,8 @@ async def dataToAlertParser(data):
                 return
             latest = atlantaAis140ToFront(raw_ais140)
 
-        if str(data.get('ignition', '')) != str(latest.get('ignition', '')):
-            if str(data.get('ignition', '')) == '1':
+        if str(data.get('ignition')) != str(latest.get('ignition')):
+            if str(data.get('ignition')) == '1':
                 print(f"[DEBUG] Sending ignition on alert for {imei} ")
                 await process_generic_alert(data, vehicleInfo, "ignition_on_alerts")
             else:
