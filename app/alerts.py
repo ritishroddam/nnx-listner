@@ -277,6 +277,9 @@ async def dataToAlertParser(data):
         
         if float(data.get('speed')) > speedThreshold:
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
+            
+        if str(data.get('sos') == '1'):
+            await process_generic_alert(data, vehicleInfo, 'panic')
 
         if data.get('harsh_break') == '1':
             await process_generic_alert(data, vehicleInfo, "harsh_break_alerts")
