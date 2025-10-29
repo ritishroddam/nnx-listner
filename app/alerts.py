@@ -201,7 +201,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
 
         existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
         if not existing_lock:
-            companyName = (vehicleInfo or {}).get('CompanyName')
+            companyName = vehicleInfo.get('CompanyName')
             if companyName:
                 company = await companyCollection.find_one({'Company Name': companyName})
                 if company:
