@@ -212,7 +212,9 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
                     users = [u async for u in cursor]
 
                     userData: List[Dict[str, str]] = []
+                    print("Users:")
                     for user in users:
+                        print(user)                        
                         disabled = int(user.get('disabled') or 0)
                         if disabled == 1:
                             continue
