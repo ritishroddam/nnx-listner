@@ -310,7 +310,7 @@ async def dataToAlertParser(data):
             lastDateTime = None
             
             for record in records:
-                if str(record.get('ignition', '')) ==  '1' and float(record.get('speed', '0.00')) < 1.00:
+                if str(record.get('ignition')) ==  '1' and float(record.get('speed', '0.00')) < 1.00:
                     lastDateTime = record.get('date_time')
                     continue
                 
