@@ -561,7 +561,7 @@ async def dataToAlertParser(data):
                 print(f"[DEBUG] Sending ignition off alert for {imei} ")
                 await process_generic_alert(data, vehicleInfo, "ignition_off_alerts")
         
-        await processGeofenceInital(imei, data, vehicleInfo, latest)
+        await processGeofenceInitial(imei, data, vehicleInfo, latest)
         # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
     except Exception as e:
