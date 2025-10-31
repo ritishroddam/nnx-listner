@@ -67,25 +67,31 @@ def _ist_str_to_utc(dt_str: str) -> datetime:
 
 def point_in_polygon(point, polygon):
     """Ray-casting algorithm to determine if point (lat, lon) is inside polygon."""
-    lat, lon = point
-    x = lon
-    y = lat
-    inside = False
-    n = len(polygon)
-    for i in range(n):
-        lat_i, lon_i = polygon[i]
-        lat_j, lon_j = polygon[(i + 1) % n]
-        xi, yi = lon_i, lat_i
-        xj, yj = lon_j, lat_j
-        intersect = ((yi > y) != (yj > y)) and \
-                    (x < (xj - xi) * (y - yi) / ((yj - yi) if (yj - yi) != 0 else 1e-12) + xi)
-        if intersect:
-            inside = not inside
-    return inside
+    try:
+        lat, lon = point
+        x = lon
+        y = lat
+        inside = False
+        n = len(polygon)
+        for i in range(n):
+            lat_i, lon_i = polygon[i]
+            lat_j, lon_j = polygon[(i + 1) % n]
+            xi, yi = lon_i, lat_i
+            xj, yj = lon_j, lat_j
+            intersect = ((yi > y) != (yj > y)) and \
+                        (x < (xj - xi) * (y - yi) / ((yj - yi) if (yj - yi) != 0 else 1e-12) + xi)
+            if intersect:
+                inside = not inside
+        return inside
+    except Exception as e:
+        print(f'[ERROR] in point_in_polygon: {e}')
 
 def is_within_circle(vehicle_coords, circleCenter, circleRadius):
-    distance = geodesic(vehicle_coords, circleCenter).meters
-    return distance <= circleRadius
+    try:
+        distance = geodesic(vehicle_coords, circleCenter).meters
+        return distance <= circleRadius
+    except Exception as e:
+        print(f'[ERROR] in is_within_circle: {e}')
 
 async def processIdleAlertInitial(imei, data, vehicleInfo):
     try:
@@ -245,8 +251,8 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
 
                 polygon = [(p["lat"], p["lng"]) for p in points]
 
-                currentPoint = point_in_polygon((data['latitude'], data['longitude']), polygon)
-                previousPoint = point_in_polygon((latest['latitude'], latest['longitude']), polygon)
+                currentPoint = point_in_polygon((float(data['latitude']), float(data['longitude'])), polygon)
+                previousPoint = point_in_polygon((float(latest['latitude']), float(latest['longitude'])), polygon)
 
                 if currentPoint != previousPoint:
                     geofenceDict[name] = currentPoint
@@ -260,8 +266,8 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
                     continue
 
                 circleCenter = (center.get('lat'), center.get('lng'))
-                currentPoint = is_within_circle((data['latitude'], data['longitude']), circleCenter, radius)
-                previousPoint = is_within_circle((latest['latitude'], latest['longitude']), circleCenter, radius)
+                currentPoint = is_within_circle((float(data['latitude']), float(data['longitude'])), circleCenter, radius)
+                previousPoint = is_within_circle((float(latest['latitude']), float(latest['longitude'])), circleCenter, radius)
 
                 if currentPoint != previousPoint:
                     geofenceDict[name] = currentPoint
@@ -537,7 +543,8 @@ async def dataToAlertParser(data):
         date_time = _ist_str_to_utc(data.get('date_time'))
         latest = await db['atlanta'].find_one(
                 {
-                    'imei': imei, 
+                    'imei': imei,
+                    'gps': 'A',
                     'date_time': {'$lt': date_time}
                 }, sort=[('date_time', DESCENDING)]
             )
