@@ -31,6 +31,7 @@ companyCollection = db['customers_list']
 userCollection = db['users']
 userConfigCollection = db['userConfig']
 recentAlertsCollection = db['alert_locks']
+geofenceCollection = db['geofences']
 
 speedingCollection = db['speedingAlerts']
 harshBrakeCollection = db['harshBrakes']
@@ -64,6 +65,216 @@ def _ist_str_to_utc(dt_str: str) -> datetime:
     parsed = parsed.replace(tzinfo=ist)
     return parsed.astimezone(timezone.utc)
 
+def point_in_polygon(point, polygon):
+    """Ray-casting algorithm to determine if point (lat, lon) is inside polygon."""
+    lat, lon = point
+    x = lon
+    y = lat
+    inside = False
+    n = len(polygon)
+    for i in range(n):
+        lat_i, lon_i = polygon[i]
+        lat_j, lon_j = polygon[(i + 1) % n]
+        xi, yi = lon_i, lat_i
+        xj, yj = lon_j, lat_j
+        intersect = ((yi > y) != (yj > y)) and \
+                    (x < (xj - xi) * (y - yi) / ((yj - yi) if (yj - yi) != 0 else 1e-12) + xi)
+        if intersect:
+            inside = not inside
+    return inside
+
+def is_within_circle(vehicle_coords, circleCenter, circleRadius):
+    distance = geodesic(vehicle_coords, circleCenter).meters
+    return distance <= circleRadius
+
+async def processIdleAlertInitial(imei, data, vehicleInfo):
+    try:
+        if imei == '863070047070049':
+            print('[DEBUG] idle for ais140 ')
+
+        now = datetime.now(timezone.utc)
+        datetimeMax = now - timedelta(hours = 24)
+        dateTimeFilter ={
+            'date_time': {
+                '$gte': datetimeMax,
+                '$lte': now
+            }
+        }
+
+        projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
+
+        records = getData(imei, dateTimeFilter, projection)
+        lastDateTime = None
+
+        for record in records:
+            if str(record.get('ignition')) ==  '1' and float(record.get('speed', '0.00')) < 1.00:
+                lastDateTime = record.get('date_time')
+                continue
+            
+            break
+
+        if lastDateTime:
+            dataDateTime = _ist_str_to_utc(data.get('date_time'))
+            idleTime = dataDateTime - lastDateTime
+        else:
+            idleTime = timedelta(0)
+
+
+        idleTime = int(idleTime.total_seconds() // 60)
+
+        if 10 <= idleTime < 60 and (idleTime % 10) == 0:
+            idleTime = f'for {idleTime} minutes'
+            await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+        elif 60 <= idleTime <= 1440 and (idleTime % 60) == 0:
+            idleTime = f'for {(idleTime // 60)} Hours'
+            await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+        elif idleTime >= 1440 and (idleTime % 60) == 0:
+            idleTime = f'for {(idleTime // 1440)} days'
+            await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+    
+    except Exception as e:
+        print(f"[ERROR] in processIdleAlertInitial: {e}")
+
+async def processDataForGeofence(data, geofenceDict, geofences, companyName, vehicleInfo):
+    try:
+        company = await companyCollection.find_one({'Company Name': companyName})
+        print(f"[DEBUG] {company}")
+
+        if company:
+            companyId = str(company.get('_id'))
+
+            cursor = userCollection.find({'company': companyId})
+            users = [u async for u in cursor]
+
+            if users:
+                user_ids = [u['_id'] for u in users]
+                user_configs = {
+                    cfg['userID']: cfg async for cfg in userConfigCollection.find({'userID': {'$in': user_ids}})
+                }
+
+                for geofence in geofences:
+                    userData = [] 
+                    for user in users:
+                        disabled = int(user.get('disabled') or 0)
+                        if disabled == 1:
+                            continue
+                        
+                        if user['role'] != "clientAdmin":
+                            assigned_users = vehicleInfo.get('AssignedUsers', [])
+                            if user['_id'] not in assigned_users:
+                                continue
+                            
+                            if geofence.get('created_by') != user.get('username'):
+                                continue
+                            
+                        userConfig = user_configs.get(user['_id'])
+                        if not userConfig:
+                            continue
+
+                        alerts_list = userConfig.get('alerts', [])
+                        if 'geofence_alerts' not in alerts_list:
+                            continue
+                        
+                        userData.append({
+                            "username": user.get('username'),
+                            "email": user.get('email')
+                        })
+
+                    if not userData:
+                        continue
+                    
+                    alert_data = data.copy()
+                    alert_data['alertType'] = 'Geofence'
+                    alert_data['EnteredGeofence'] = geofenceDict[geofence['name']]
+                    alert_data['geofenceName'] = geofence['name']
+
+                    await asyncio.to_thread(buildAndSendEmail, alert_data, companyName, userData)
+        
+        utc_dt = _ist_str_to_utc(data.get('date_time'))
+        
+        entries, exits = [], []
+        for geofence in geofences:
+            record = {
+                'imei': data.get('imei'),
+                'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber'),
+                'geofenceName': geofence['name'],
+                'date_time': utc_dt,
+                'latitude': data.get('latitude'),
+                'longitude': data.get('longitude'),
+                'location': data.get('address'),
+            }
+            if geofenceDict.get(geofence['name']):
+                entries.append(record)
+            else:
+                exits.append(record)
+                
+        if entries:
+            await geofenceInCollection.insert_many(entries)
+
+        if exits:
+            await geofenceOutCollection.insert_many(exits)
+                
+        
+    except Exception as e:
+        print(f"[ERROR] in processDataForGeofence: {e}")
+           
+async def processGeofenceInitial(imei, data, vehicleInfo, latest):
+    try:
+        if not vehicleInfo:
+            return
+
+        companyName = vehicleInfo.get('CompanyName')
+        print(f"[DEBUG] Company Name: {companyName}")
+
+        cursor = geofenceCollection.find({'company': companyName})
+        geofences = [doc async for doc in cursor]
+        
+        if not geofences:
+            return
+        
+        geofenceDict = {}
+
+        for geofence in geofences:
+            shape_type = geofence.get('shape_type')
+            name = geofence.get('name')
+
+            if shape_type == 'polygon':
+                points = geofence.get('coordinates', {}).get('points', [])
+                if not points:
+                    continue
+
+                polygon = [(p["lat"], p["lng"]) for p in points]
+
+                currentPoint = point_in_polygon((data['latitude'], data['longitude']), polygon)
+                previousPoint = point_in_polygon((latest['latitude'], latest['longitude']), polygon)
+
+                if currentPoint != previousPoint:
+                    geofenceDict[name] = currentPoint
+
+            elif shape_type == 'circle':
+                coords = geofence.get('coordinates', {})
+                center = coords.get('center', {})
+                radius = coords.get('radius')
+
+                if not center or not radius:
+                    continue
+
+                circleCenter = (center.get('lat'), center.get('lng'))
+                currentPoint = is_within_circle((data['latitude'], data['longitude']), circleCenter, radius)
+                previousPoint = is_within_circle((latest['latitude'], latest['longitude']), circleCenter, radius)
+
+                if currentPoint != previousPoint:
+                    geofenceDict[name] = currentPoint
+        
+        if not geofenceDict:
+            return
+        
+        await processDataForGeofence(data, geofenceDict, geofences, companyName, vehicleInfo)
+
+    except Exception as e:
+        print(f"[ERROR] processGeofenceInitial failed for {imei}: {e}")
+        return None
+    
 async def processDataForIdle(data, vehicleInfo, idleTime):
     try:
         existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
@@ -89,9 +300,17 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
                             if disabled == 1:
                                 continue
                             
+                            if user['role'] != "clientAdmin":
+                                assigned_users = vehicleInfo.get('AssignedUsers', [])
+                                if user['_id'] not in assigned_users:
+                                    continue
+                                    
                             userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
 
-                            alerts_list = (userConfig.get('alerts') if userConfig else []) or []
+                            if not userConfig:
+                                continue
+                            
+                            alerts_list = userConfig.get('alerts', [])
 
                             if 'idle_alerts' in alerts_list:
                                 userData.append({
@@ -156,19 +375,26 @@ async def processDataForOverSpeed(data, vehicleInfo):
                             disabled = int(user.get('disabled') or 0)
                             if disabled == 1:
                                 continue
+                            
+                            if user['role'] != "clientAdmin":
+                                if user['_id'] not in vehicleInfo['AssignedUsers']:
+                                    continue
+                            
                             userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
+
+                            if not userConfig:
+                                continue
 
                             alerts_list = (userConfig.get('alerts') if userConfig else []) or []
 
-                            if userConfig:
-                                if 'speeding_alerts' in alerts_list:
-                                    print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
-                                    userData.append(
-                                        {
-                                            "username": user.get('username'),
-                                            "email": user.get('email')
-                                        }
-                                    )
+                            if 'speeding_alerts' in alerts_list:
+                                print(f"[DEBUG] {user.get('username')}, {user.get('email')}")
+                                userData.append(
+                                    {
+                                        "username": user.get('username'),
+                                        "email": user.get('email')
+                                    }
+                                )
 
                     print(f"[DEBUG] trying to send email with: {userData}")
                     if userData:
@@ -220,6 +446,11 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
                         disabled = int(user.get('disabled') or 0)
                         if disabled == 1:
                             continue
+                        
+                        if user['role'] != "clientAdmin":
+                            if user['_id'] not in vehicleInfo['AssignedUsers']:
+                                continue
+                        
                         userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
                         alerts_list = (userConfig.get('alerts') if userConfig else []) or []
                         if alert_key in alerts_list or alert_key in ['panic', 'main_power_supply']:
@@ -253,9 +484,6 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
     
     except Exception as e:
         print(f"[ERROR] in process_generic_alert: {e}")
-
-def processDataForGeofence(data):
-    pass
 
 ALERTS = ['Speeding', 'Harsh Braking', 'Harsh Acceleration', 'GSM Signal Low', 'Internal Battery Low', 
           'Main Power Supply Dissconnect', 'Idle', 'Ignition On', 'Ignition Off', 'Geofence In', 'Geofence Out']
@@ -300,50 +528,12 @@ async def dataToAlertParser(data):
             await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
         if str(data.get('ignition')) ==  '1' and float(data.get('speed', '0.00')) < 1.00:
-            
-            if imei == '863070047070049':
-                print('[DEBUG] idle for ais140 ')
-            
-            now = datetime.now(timezone.utc)
-            datetimeMax = now - timedelta(hours = 24)
-            dateTimeFilter ={
-                'date_time': {
-                    '$gte': datetimeMax,
-                    '$lte': now
-                }
-            }
+            await processIdleAlertInitial(imei, data, vehicleInfo)           
 
-            projection = {'ignition': 1, 'speed': 1, 'date_time': 1, '_id': 0}
-
-            records = getData(imei, dateTimeFilter, projection)
-            lastDateTime = None
-            
-            for record in records:
-                if str(record.get('ignition')) ==  '1' and float(record.get('speed', '0.00')) < 1.00:
-                    lastDateTime = record.get('date_time')
-                    continue
-                
-                break
-
-            if lastDateTime:
-                dataDateTime = _ist_str_to_utc(data.get('date_time'))
-                idleTime = dataDateTime - lastDateTime
-            else:
-                idleTime = timedelta(0)
-
-
-            idleTime = int(idleTime.total_seconds() // 60)
-            
-            if 10 <= idleTime < 60 and (idleTime % 10) == 0:
-                idleTime = f'for {idleTime} minutes'
-                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
-            elif 60 <= idleTime <= 1440 and (idleTime % 60) == 0:
-                idleTime = f'for {(idleTime // 60)} Hours'
-                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
-            elif idleTime >= 1440 and (idleTime % 60) == 0:
-                idleTime = f'for {(idleTime // 1440)} days'
-                await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
-
+        #####################################################
+        #####################################################
+        #####################################################
+        
         date_time = _ist_str_to_utc(data.get('date_time'))
         latest = await db['atlanta'].find_one(
                 {
@@ -370,6 +560,8 @@ async def dataToAlertParser(data):
             else:
                 print(f"[DEBUG] Sending ignition off alert for {imei} ")
                 await process_generic_alert(data, vehicleInfo, "ignition_off_alerts")
+        
+        await processGeofenceInital(imei, data, vehicleInfo, latest)
         # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
     
     except Exception as e:
