@@ -217,6 +217,7 @@ def store_data_in_mongodb(json_data):
     try:
         result = collection.insert_one(json_data)
         ensure_socket_connection()
+        shouldEmit = should_emit(json_data['imei'],json_data['date_time'])
         if json_data['gps'] == 'A':
             latestData = json_data
             latestData["_id"] = json_data['imei']
@@ -239,7 +240,7 @@ def store_data_in_mongodb(json_data):
             run_coro(dataToAlertParser(json_data))
             if sio.connected:
                 try:
-                    if json_data['status'] == '01' and should_emit(json_data['imei'],json_data['date_time']):
+                    if json_data['status'] == '01' and shouldEmit:
                         sio.emit('vehicle_live_update', json_data)
                         sio.emit('vehicle_update', json_data)
                 except Exception as e:
