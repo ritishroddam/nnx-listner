@@ -217,7 +217,7 @@ def store_data_in_mongodb(json_data):
     try:
         result = collection.insert_one(json_data)
         ensure_socket_connection()
-        if json_data['gps'] == 'A' and json_data['status'] == '01' and should_emit(json_data['imei'],json_data['date_time']):
+        if json_data['gps'] == 'A':
             latestData = json_data
             latestData["_id"] = json_data['imei']
             collectionLatest.replace_one({'_id': json_data['imei']}, latestData, upsert=True)
@@ -236,11 +236,12 @@ def store_data_in_mongodb(json_data):
                 json_data['slowSpeed'] = 40.0
                 json_data['normalSpeed'] = 60.0
             json_data['address'] = geocodeInternal(json_data['latitude'],json_data['longitude'])
+            run_coro(dataToAlertParser(json_data))
             if sio.connected:
                 try:
-                    run_coro(dataToAlertParser(json_data))
-                    sio.emit('vehicle_live_update', json_data)
-                    sio.emit('vehicle_update', json_data)
+                    if json_data['status'] == '01' and should_emit(json_data['imei'],json_data['date_time']):
+                        sio.emit('vehicle_live_update', json_data)
+                        sio.emit('vehicle_update', json_data)
                 except Exception as e:
                     print("Error emitting data to WebSocket:", e)
     except Exception as e:

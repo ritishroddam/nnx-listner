@@ -274,6 +274,8 @@ async def parse_for_emit(parsedData):
         "mobNetworkCode": network.get("mnc"),
         "localAreaCode": network.get("lac"),
         "cellid": network.get("cellId"),
+        "gps": "A" if gps.get("gpsStatus") == 1 else "V",
+        "status": "01" if packet.get("status") == "L" else "03",
         "date_time": str(gps.get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S")),
         "timestamp": str(parsedData.get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S")),
         "address": address,
@@ -640,12 +642,12 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         await latest_queue.put(parsed)
 
                     emit_data = await parse_for_emit(parsed)
+                    await dataToAlertParser(emit_data)
                     if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
                         _ensure_socket_connection()
                         if sio.connected:
                             try:
                                 print("[DEBUG] sending Data of AIS140 Device for alerts")
-                                await dataToAlertParser(emit_data)
                                 sio.emit('vehicle_live_update', emit_data)
                                 sio.emit('vehicle_update', emit_data)
                             except Exception as e:

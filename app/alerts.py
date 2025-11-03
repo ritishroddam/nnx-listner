@@ -146,7 +146,7 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
         company = await companyCollection.find_one({'Company Name': companyName})
         print(f"[DEBUG] {company}")
 
-        if company:
+        if company and data['status'] == '01':
             companyId = str(company.get('_id'))
 
             cursor = userCollection.find({'company': companyId})
@@ -284,7 +284,7 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
 async def processDataForIdle(data, vehicleInfo, idleTime):
     try:
         existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Idle'})
-        if not existing_lock:
+        if not existing_lock and data['status'] == '01':
             if vehicleInfo:
                 companyName = vehicleInfo.get('CompanyName')
                 print(f"[DEBUG] Company Name: {companyName}")
@@ -352,7 +352,7 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
 async def processDataForOverSpeed(data, vehicleInfo):
     try:
         existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': 'Speed'})
-        if not existing_lock:
+        if not existing_lock and data['status'] == '01':
             if vehicleInfo:
                 companyName = vehicleInfo.get('CompanyName')
                 print(f"[DEBUG] Company Name: {companyName}")
@@ -434,7 +434,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
             return
 
         existing_lock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': meta["label"]})
-        if not existing_lock:
+        if not existing_lock and data['status'] == '01':
             companyName = vehicleInfo.get('CompanyName')
             if companyName:
                 print(f'Company name for {data.get('LicensePlateNumber')} is {companyName}')
