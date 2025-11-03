@@ -2,7 +2,7 @@ import http.client
 import json
 from datetime import datetime, timezone
 
-conn = http.client.HTTPSConnection("control.msg91.com")
+# conn = http.client.HTTPSConnection("control.msg91.com")
 
 def buildVariable(company, data):
     variable = {
@@ -59,22 +59,34 @@ def buildAndSendEmail(data, company, recepients):
 
     body = json.dumps(payload).encode('utf-8')
 
-    conn.request("POST", "/api/v5/email/send", body, headers)
-    res = conn.getresponse()
-    emailData = res.read()
-    print(res.status, res.reason)
-    
-    if res.status == 200:
-        from parser import db
-        print('[DEBUG] Saving in alert_locks')
-        var = db['alert_locks'].insert_one(
-            {
-                'LicensePlateNumber' : data.get('LicensePlateNumber'),
-                'type': data.get('alertType'),
-                'imei': data.get('imei'),
-                'last_sent': datetime.now(timezone.utc),
-            }
-        )
-        print(var.acknowledged)
-    
-    print(emailData.decode("utf-8"))
+    conn = None
+    try:
+        conn = http.client.HTTPSConnection("control.msg91.com", timeout=15)
+        conn.request("POST", "/api/v5/email/send", body, headers)
+        res = conn.getresponse()
+        emailData = res.read()
+        print(res.status, res.reason)
+
+        if res.status == 200:
+            from parser import db
+            print('[DEBUG] Saving in alert_locks')
+            var = db['alert_locks'].insert_one(
+                {
+                    'LicensePlateNumber' : data.get('LicensePlateNumber'),
+                    'type': data.get('alertType'),
+                    'imei': data.get('imei'),
+                    'last_sent': datetime.now(timezone.utc),
+                }
+            )
+            print(var.acknowledged)
+
+        print(emailData.decode("utf-8"))
+    except Exception as e:
+        print(f"[ERROR] buildAndSendEmail failed: {e}")
+        return
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
