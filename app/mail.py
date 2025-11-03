@@ -61,7 +61,7 @@ def buildAndSendEmail(data, company, recepients):
 
     conn = None
     try:
-        conn = http.client.HTTPSConnection("control.msg91.com", timeout=15)
+        conn = http.client.HTTPSConnection("control.msg91.com", timeout = 30)
         conn.request("POST", "/api/v5/email/send", body, headers)
         res = conn.getresponse()
         emailData = res.read()
