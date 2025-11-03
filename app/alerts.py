@@ -486,7 +486,7 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
         try:
             await meta["coll"].insert_one(doc)
         except Exception as e:
-            print(f"[DEBUG] Failed to persist {alert_key}: {e}")
+            print(f"[ERROR] Failed to persist {alert_key}: {e}")
     
     except Exception as e:
         print(f"[ERROR] in process_generic_alert: {e}")
