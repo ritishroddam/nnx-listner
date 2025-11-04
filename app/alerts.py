@@ -208,6 +208,10 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
                     
                     await asyncio.to_thread(buildAndSendEmail, alert_data, companyName, userData)
         
+        else:
+            message = f'Could not find company or data is not 01 {data['status'] }'
+            await debugEmails(data.get('imei'), data, message) 
+        
         utc_dt = _ist_str_to_utc(data.get('date_time'))
         
         entries, exits = [], []

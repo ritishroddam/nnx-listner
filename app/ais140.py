@@ -1,4 +1,3 @@
-# ais140_listener.py
 import os
 import asyncio
 import googlemaps
