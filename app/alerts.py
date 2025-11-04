@@ -145,19 +145,12 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
     try:
         company = await companyCollection.find_one({'Company Name': companyName})
         print(f"[DEBUG] {company}")
-        
-        message = 'In processDataForGeofence'
-        await debugEmails(data.get('imei'), data, message)
 
         if company and data['status'] == '01':
             companyId = str(company.get('_id'))
 
             cursor = userCollection.find({'company': companyId})
             users = [u async for u in cursor]
-
-            if not users:
-                message = 'Users Not Found'
-                await debugEmails(data.get('imei'), data, message)
             
             if users:
                 user_ids = [u['_id'] for u in users]
@@ -194,8 +187,6 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
                         })
 
                     if not userData:
-                        message = 'Users data Not Found'
-                        await debugEmails(data.get('imei'), data, message)
                         continue
                     
                     alert_data = data.copy()
@@ -203,14 +194,8 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
                     alert_data['EnteredGeofence'] = geofenceDict[geofence['name']]
                     alert_data['geofenceName'] = geofence['name']
                     
-                    message = f'Sending email with data {userData}'
-                    await debugEmails(data.get('imei'), data, message)
                     
                     await asyncio.to_thread(buildAndSendEmail, alert_data, companyName, userData)
-        
-        else:
-            message = f'Could not find company or data is not 01 {data['status'] }'
-            await debugEmails(data.get('imei'), data, message) 
         
         utc_dt = _ist_str_to_utc(data.get('date_time'))
         
@@ -239,23 +224,6 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
         
     except Exception as e:
         print(f"[ERROR] in processDataForGeofence: {e}")
-
-async def debugEmails(imei, data, message):
-    existingLock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': message})
-    if imei in ['864356068074666', '864356062307963'] and not existingLock:
-        userData = [{
-            "username": 'Debuginnn',
-            "email": "ritishroddam@gmail.com"
-        }]
-        
-        alert_data = data.copy()
-        alert_data['alertType'] = message
-        
-        companyName = 'Debugginnnn'
-        
-        await asyncio.to_thread(buildAndSendEmail, alert_data, companyName, userData)
-        
-        print(f'[EMAIL DEBUGS]For {imei} debug message: {message}')
            
 async def processGeofenceInitial(imei, data, vehicleInfo, latest):
     try:
@@ -263,16 +231,11 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
             return
 
         companyName = vehicleInfo.get('CompanyName')
-        
-        message = 'In processGeofencinitial'
-        await debugEmails(imei, data, message)
 
         cursor = geofenceCollection.find({'company': companyName})
         geofences = [doc async for doc in cursor]
         
         if not geofences:
-            message = 'Geofences not found'
-            await debugEmails(imei, data, message)
             return
         
         geofenceDict = {}
@@ -315,8 +278,6 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
         await processDataForGeofence(data, geofenceDict, geofences, companyName, vehicleInfo)
 
     except Exception as e:
-        message = f"[ERROR] processGeofenceInitial failed for {imei}: {e}"
-        await debugEmails(data.get('imei'), data, message)
         print(f"[ERROR] processGeofenceInitial failed for {imei}: {e}")
         return None
     
@@ -386,8 +347,6 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
         )
         
     except Exception as e:
-        message = "[ERROR] in processDataForIdle: {e}"
-        await debugEmails(data.get('imei'), data, message)
         print(f"[ERROR] in processDataForIdle: {e}")
 
 async def processDataForOverSpeed(data, vehicleInfo):
