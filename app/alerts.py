@@ -250,6 +250,8 @@ async def debugEmails(imei, data, message):
         companyName = 'Debugginnnn'
         
         await asyncio.to_thread(buildAndSendEmail, alert_data, companyName, userData)
+        
+        print(f'[EMAIL DEBUGS]For {imei} debug message: {message}')
            
 async def processGeofenceInitial(imei, data, vehicleInfo, latest):
     try:
