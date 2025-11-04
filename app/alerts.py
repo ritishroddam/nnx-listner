@@ -237,7 +237,8 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
         print(f"[ERROR] in processDataForGeofence: {e}")
 
 async def debugEmails(imei, data, message):
-    if imei in ['864356068074666', '864356062307963']:
+    existingLock = await recentAlertsCollection.find_one({'imei': data.get('imei'), 'type': message})
+    if imei in ['864356068074666', '864356062307963'] and not existingLock:
         userData = [{
             "username": 'Debuginnn',
             "email": "ritishroddam@gmail.com"
