@@ -239,12 +239,12 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
 async def debugEmails(imei, data, message):
     if imei in ['864356068074666', '864356062307963']:
         userData = [{
-            "username": message,
+            "username": 'Debuginnn',
             "email": "ritishroddam@gmail.com"
         }]
         
         alert_data = data.copy()
-        alert_data['alertType'] = 'In processGeofenceInitial'
+        alert_data['alertType'] = message
         
         companyName = 'Debugginnnn'
         
