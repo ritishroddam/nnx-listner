@@ -159,6 +159,9 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
                 }
 
                 for geofence in geofences:
+                    if geofence.get('name') not in geofenceDict:
+                        continue
+                    
                     userData = [] 
                     for user in users:
                         disabled = int(user.get('disabled') or 0)
