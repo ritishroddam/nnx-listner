@@ -285,8 +285,6 @@ def split_atlanta_messages(data):
         start = match.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(data)
         messages.append(data[start:end])
-    for m in messages:
-        print(f'[Debuginn] {m}')
     return messages
 
 def parse_and_process_data(data, status_prefix):
