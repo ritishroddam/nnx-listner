@@ -42,7 +42,7 @@ mainPowerSupplyDissconnectCollection = db['powerSupplyDissconnects']
 idleCollection = db['idles']
 ignitionOnCollection = db['ignitionOns']
 ignitionOffCollection = db['ignitionOffs']
-geofenceInCollection = db['geodenceIns']
+geofenceInCollection = db['geofenceIns']
 geofenceOutCollection = db['geofenceOuts']
 panicCollection = db['panic']
 
