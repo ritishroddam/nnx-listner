@@ -201,6 +201,9 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
         
         entries, exits = [], []
         for geofence in geofences:
+            if geofence.get('name') not in geofenceDict:
+                continue
+                
             record = {
                 'imei': data.get('imei'),
                 'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber'),
@@ -238,11 +241,19 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
         if not geofences:
             return
         
+        try:
+            cur_lat, cur_lon = float(data['latitude']), float(data['longitude'])
+            prev_lat, prev_lon = float(latest.get('latitude')), float(latest.get('longitude'))
+        except Exception:
+            return
+        
         geofenceDict = {}
 
         for geofence in geofences:
             shape_type = geofence.get('shape_type')
             name = geofence.get('name')
+            
+            
 
             if shape_type == 'polygon':
                 points = geofence.get('coordinates', {}).get('points', [])
@@ -251,8 +262,8 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
 
                 polygon = [(p["lat"], p["lng"]) for p in points]
 
-                currentPoint = point_in_polygon((float(data['latitude']), float(data['longitude'])), polygon)
-                previousPoint = point_in_polygon((float(latest['latitude']), float(latest['longitude'])), polygon)
+                currentPoint = point_in_polygon((cur_lat, cur_lon), polygon)
+                previousPoint = point_in_polygon((prev_lat, prev_lon), polygon)
 
                 if currentPoint != previousPoint:
                     geofenceDict[name] = currentPoint
@@ -266,8 +277,8 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
                     continue
 
                 circleCenter = (center.get('lat'), center.get('lng'))
-                currentPoint = is_within_circle((float(data['latitude']), float(data['longitude'])), circleCenter, radius)
-                previousPoint = is_within_circle((float(latest['latitude']), float(latest['longitude'])), circleCenter, radius)
+                currentPoint = is_within_circle((cur_lat, cur_lon), circleCenter, radius)
+                previousPoint = is_within_circle((prev_lat, prev_lon), circleCenter, radius)
 
                 if currentPoint != previousPoint:
                     geofenceDict[name] = currentPoint
