@@ -421,8 +421,13 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 return
             
             print(f"[DEBUG] Received data from {addr}: {receive_data!r}")
-            
-            for msg_bytes in split_atlanta_messages(receive_data):
+            msgs = split_atlanta_messages(receive_data)
+            # process all messages but keep the very first msg_bytes to be processed last
+            if len(msgs) > 1:
+                to_process = msgs[1:] + msgs[:1]
+            else:
+                to_process = msgs
+            for msg_bytes in to_process:
                 try:
                     index_03 = msg_bytes.find(b'\x03')
                     index_01 = msg_bytes.find(b'\x01')
