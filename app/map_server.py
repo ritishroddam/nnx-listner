@@ -221,7 +221,8 @@ def store_data_in_mongodb(json_data):
         if json_data['gps'] == 'A':
             latestData = json_data
             latestData["_id"] = json_data['imei']
-            collectionLatest.replace_one({'_id': json_data['imei']}, latestData, upsert=True)
+            if shouldEmit:
+                collectionLatest.replace_one({'_id': json_data['imei']}, latestData, upsert=True)
             json_data['_id'] = str(json_data['_id'])
             json_data['date_time'] = str(json_data.get("date_time").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S"))
             json_data['timestamp'] = str(json_data.get("timestamp").astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M:%S"))
