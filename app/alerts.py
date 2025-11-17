@@ -12,6 +12,7 @@ from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
 from mail import buildAndSendEmail
 from parser import getData, atlantaAis140ToFront
+from pushAPI import sendPushAPIs
 
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
@@ -125,21 +126,26 @@ async def processIdleAlertInitial(imei, data, vehicleInfo):
         else:
             idleTime = timedelta(0)
 
-
         idleTime = int(idleTime.total_seconds() // 60)
 
         if 10 <= idleTime < 60 and (idleTime % 10) == 0:
             idleTime = f'for {idleTime} minutes'
             await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+            return True
         elif 60 <= idleTime <= 1440 and (idleTime % 60) == 0:
             idleTime = f'for {(idleTime // 60)} Hours'
             await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+            return True
         elif idleTime >= 1440 and (idleTime % 60) == 0:
             idleTime = f'for {(idleTime // 1440)} days'
             await processDataForIdle(data, vehicleInfo if vehicleInfo else None, idleTime)
+            return True
+        else:
+            return False
     
     except Exception as e:
         print(f"[ERROR] in processIdleAlertInitial: {e}")
+        return False
 
 async def processDataForGeofence(data, geofenceDict, geofences, companyName, vehicleInfo):
     try:
@@ -255,8 +261,6 @@ async def processGeofenceInitial(imei, data, vehicleInfo, latest):
         for geofence in geofences:
             shape_type = geofence.get('shape_type')
             name = geofence.get('name')
-            
-            
 
             if shape_type == 'polygon':
                 points = geofence.get('coordinates', {}).get('points', [])
@@ -346,19 +350,19 @@ async def processDataForIdle(data, vehicleInfo, idleTime):
                 else:
                     print("[DEBUG] Company Not Found")
 
-        utc_dt = _ist_str_to_utc(data.get('date_time'))
+            utc_dt = _ist_str_to_utc(data.get('date_time'))
 
-        await idleCollection.insert_one(
-            {
-                'imei': data.get('imei'),
-                'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber') if vehicleInfo else None,
-                'alertMessage': idleTime,
-                'date_time': utc_dt,
-                'latitude': data.get('latitude'),
-                'longitude': data.get('longitude'),
-                'location': data.get('address'),
-            }
-        )
+            await idleCollection.insert_one(
+                {
+                    'imei': data.get('imei'),
+                    'LicensePlateNumber': vehicleInfo.get('LicensePlateNumber') if vehicleInfo else None,
+                    'alertMessage': idleTime,
+                    'date_time': utc_dt,
+                    'latitude': data.get('latitude'),
+                    'longitude': data.get('longitude'),
+                    'location': data.get('address'),
+                }
+            )
         
     except Exception as e:
         print(f"[ERROR] in processDataForIdle: {e}")
@@ -520,38 +524,49 @@ async def dataToAlertParser(data):
         
         print(f'[DEBUG] {data.get('speed', '0.00')}')
         
+        alerts = []
+        
         if float(data.get('speed')) > speedThreshold:
+            alerts.append('speed')
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
             
         if str(data.get('sos')) == '1':
+            alerts.append('sos')
             await process_generic_alert(data, vehicleInfo, 'panic')
 
         if data.get('harsh_break') == '1':
+            alerts.append('harshBraking')
             await process_generic_alert(data, vehicleInfo, "harsh_break_alerts")
 
         if data.get('harsh_speed') == '1':
+            alerts.append('harshAcceleration')
             await process_generic_alert(data, vehicleInfo, "harsh_acceleration_alerts")
 
         if int(data.get('gsm_sig')) <= 8:
+            alerts.append('lowGSMSignal')
             await process_generic_alert(data, vehicleInfo, "gsm_low_alerts")
 
         try:
             if float(data.get('internal_bat')) <= 3.7:
+                alerts.append('intternalBatteryLow')
                 await process_generic_alert(data, vehicleInfo, "internal_battery_low_alerts")
         except Exception as e:
             print('[ERROR] Not a valid internal battery value')
 
         if str(data.get('main_power')) == '0':
+            alerts.append('mainPowerSupplyDisconnect')
             await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
         if str(data.get('ignition')) ==  '1' and float(data.get('speed', '0.00')) < 1.00:
-            await processIdleAlertInitial(imei, data, vehicleInfo)           
+            if await processIdleAlertInitial(imei, data, vehicleInfo):
+                alerts.append('idle')
 
         #####################################################
         #####################################################
         #####################################################
         
         date_time = _ist_str_to_utc(data.get('date_time'))
+        print(f'[DATETIME DEBUG] epoch time: {date_time.timestamp()}')
         latest = await db['atlanta'].find_one(
                 {
                     'imei': imei,
@@ -574,13 +589,16 @@ async def dataToAlertParser(data):
         if str(data.get('ignition')) != str(latest.get('ignition')):
             if str(data.get('ignition')) == '1':
                 print(f"[DEBUG] Sending ignition on alert for {imei} ")
+                alerts.append('ignitionOn')
                 await process_generic_alert(data, vehicleInfo, "ignition_on_alerts")
             else:
                 print(f"[DEBUG] Sending ignition off alert for {imei} ")
+                alerts.append('ignitionOff')
                 await process_generic_alert(data, vehicleInfo, "ignition_off_alerts")
         
         await processGeofenceInitial(imei, data, vehicleInfo, latest)
-        # processDataForGeofence(data, vehicleInfo if vehicleInfo else None)
+        
+        # await sendPushAPIs(data, alerts, date_time)
     
     except Exception as e:
         print(f"[ERROR] in dataToAlertParser: {e}")

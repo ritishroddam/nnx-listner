@@ -6,7 +6,6 @@ from pymongo import MongoClient
 from flask import Flask
 import signal
 import sys
-from datetime import datetime
 from flask_cors import CORS
 import socketio
 import time
