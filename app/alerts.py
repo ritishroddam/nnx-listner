@@ -566,7 +566,6 @@ async def dataToAlertParser(data):
         #####################################################
         
         date_time = _ist_str_to_utc(data.get('date_time'))
-        print(f'[DATETIME DEBUG] epoch time: {date_time.timestamp()}')
         latest = await db['atlanta'].find_one(
                 {
                     'imei': imei,
@@ -598,7 +597,7 @@ async def dataToAlertParser(data):
         
         await processGeofenceInitial(imei, data, vehicleInfo, latest)
         
-        # await sendPushAPIs(data, alerts, date_time)
+        await sendPushAPIs(data, alerts, date_time)
     
     except Exception as e:
         print(f"[ERROR] in dataToAlertParser: {e}")
