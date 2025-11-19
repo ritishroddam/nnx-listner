@@ -14,8 +14,6 @@ getMoveInSyncAlerts = {
     'intternalBatteryLow': 'INTERNAL_BATTERY_LOW_ALERT',
     }
 
-
-
 MOVE_IN_SYNC_ENDPOINT = 'http://tracking.moveinsync.com:8080/gps-tracking/devices/CORDON/packets/critical'
 
 def sendDataToMoveInSync(data, alerts, date_time):
