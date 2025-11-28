@@ -59,7 +59,7 @@ def sendDataToMoveInSync(data, alerts, date_time):
         print(f"[ERROR] MoveInSync push failed: {exc}")
     
     
-def sendPushAPIs(data, alerts, date_time):
+async def sendPushAPIs(data, alerts, date_time):
     try:
         sendDataToMoveInSync(data, alerts, date_time)
     
