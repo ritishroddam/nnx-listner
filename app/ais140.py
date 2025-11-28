@@ -557,6 +557,9 @@ async def _bulk_latest_upsert_worker(coll, q: "asyncio.Queue[Dict[str, Any]]"):
                 doc = await asyncio.wait_for(q.get(), timeout=timeout)
                 if doc.get("type") != "LOCATION":
                     continue
+                gps_info = doc.get("gps") or {}
+                if gps_info.get("gpsStatus") != 1:
+                    continue
                 imei = doc.get("imei")
                 if not imei:
                     continue
