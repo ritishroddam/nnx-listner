@@ -1,6 +1,7 @@
 from datetime import datetime
 import requests
 from pymongo import MongoClient
+import asyncio
 
 mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
@@ -61,7 +62,7 @@ def sendDataToMoveInSync(data, alerts, date_time):
     
 async def sendPushAPIs(data, alerts, date_time):
     try:
-        sendDataToMoveInSync(data, alerts, date_time)
+        await asyncio.to_thread(sendDataToMoveInSync, data, alerts, date_time)
     
     except Exception as e:
         print(f"[ERROR] in sendPushAPIs: {e}")

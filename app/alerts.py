@@ -597,7 +597,7 @@ async def dataToAlertParser(data):
         
         await processGeofenceInitial(imei, data, vehicleInfo, latest)
         
-        sendPushAPIs(data, alerts, date_time)
+        await sendPushAPIs(data, alerts, date_time)
     
     except Exception as e:
         print(f"[ERROR] in dataToAlertParser: {e}")
