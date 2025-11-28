@@ -240,8 +240,12 @@ async def parse_for_emit(parsedData):
         vehicleType = "Unknown"
         slowSpeed = 40.0
         normalSpeed = 60.0
-    address = await _geocodeInternal(parsedData.get("gps", {}).get("lat"), parsedData.get("gps", {}).get("lon"))
     
+    if parsedData.get("gps", {}).get("gpsStatus") ==  1:
+        address = await _geocodeInternal(parsedData.get("gps", {}).get("lat"), parsedData.get("gps", {}).get("lon"))
+    else:
+        address = "Address unavailable"
+        
     gps = parsedData.get("gps", {}) or {}
     telemetry = parsedData.get("telemetry", {}) or {}
     network = parsedData.get("network", {}) or {}
@@ -647,8 +651,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                         if sio.connected:
                             try:
                                 print("[DEBUG] sending Data of AIS140 Device for alerts")
-                                sio.emit('vehicle_live_update', emit_data)
-                                sio.emit('vehicle_update', emit_data)
+                                if parsed.get("gps", {}).get("gpsStatus") ==  1:
+                                    sio.emit('vehicle_live_update', emit_data)
+                                    sio.emit('vehicle_update', emit_data)
                             except Exception as e:
                                 print(f"[{datetime.now()}] ! Socket.IO emit error: {e}")
                         else:

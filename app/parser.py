@@ -100,7 +100,7 @@ def getData(imei, date_filter, projection):
     if isinstance(date_filter, dict):
         dt_filter = date_filter.get("date_time")
 
-    ais140_query = {"imei": imei}
+    ais140_query = {"imei": imei, "gps.gpsStatus": 1}
     
     if dt_filter is not None:
         ais140_query["gps.timestamp"] = dt_filter
