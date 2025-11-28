@@ -1,7 +1,6 @@
 from datetime import datetime
-import requests
+import httpx
 from pymongo import MongoClient
-import asyncio
 
 mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
@@ -17,7 +16,7 @@ getMoveInSyncAlerts = {
 
 MOVE_IN_SYNC_ENDPOINT = 'http://tracking.moveinsync.com:8080/gps-tracking/devices/CORDON/packets/critical'
 
-def sendDataToMoveInSync(data, alerts, date_time):
+async def sendDataToMoveInSync(data, alerts, date_time):
     imei = data.get('imei')
     if not imei or moveInSyncSubscribed.find_one({'imei': imei}) is None:
         return
@@ -48,21 +47,21 @@ def sendDataToMoveInSync(data, alerts, date_time):
         payload[0]['alertMap'] = sendAlertsDict
 
     try:
-        response = requests.post(
-            MOVE_IN_SYNC_ENDPOINT,
-            json=payload,
-            headers={'Content-Type': 'application/json'},
-            timeout=10,
-        )
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(
+                MOVE_IN_SYNC_ENDPOINT,
+                json=payload,
+                headers={'Content-Type': 'application/json'},
+            )
         response.raise_for_status()
-        print(f"[INFO] MoveInSync response: {response}")
-    except requests.RequestException as exc:
+        print(f"[INFO] MoveInSync response: {response.text}")
+    except httpx.HTTPError as exc:
         print(f"[ERROR] MoveInSync push failed: {exc}")
     
     
 async def sendPushAPIs(data, alerts, date_time):
     try:
-        await asyncio.to_thread(sendDataToMoveInSync, data, alerts, date_time)
+        await sendDataToMoveInSync(data, alerts, date_time)
     
     except Exception as e:
         print(f"[ERROR] in sendPushAPIs: {e}")
