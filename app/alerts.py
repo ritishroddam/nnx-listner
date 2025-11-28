@@ -529,10 +529,6 @@ async def dataToAlertParser(data):
         if float(data.get('speed')) > speedThreshold:
             alerts.append('speed')
             await processDataForOverSpeed(data, vehicleInfo if vehicleInfo else None)
-            
-        if str(data.get('sos')) == '1':
-            alerts.append('sos')
-            await process_generic_alert(data, vehicleInfo, 'panic')
 
         if data.get('harsh_break') == '1':
             alerts.append('harshBraking')
@@ -552,10 +548,6 @@ async def dataToAlertParser(data):
                 await process_generic_alert(data, vehicleInfo, "internal_battery_low_alerts")
         except Exception as e:
             print('[ERROR] Not a valid internal battery value')
-
-        if str(data.get('main_power')) == '0':
-            alerts.append('mainPowerSupplyDisconnect')
-            await process_generic_alert(data, vehicleInfo, "main_power_supply")
 
         if str(data.get('ignition')) ==  '1' and float(data.get('speed', '0.00')) < 1.00:
             if await processIdleAlertInitial(imei, data, vehicleInfo):
@@ -585,6 +577,14 @@ async def dataToAlertParser(data):
                 return
             latest = atlantaAis140ToFront(raw_ais140)
 
+        if str(data.get('main_power')) == '0' and str(data.get('main_power')) != str(latest.get('main_power')):
+            alerts.append('mainPowerSupplyDisconnect')
+            await process_generic_alert(data, vehicleInfo, "main_power_supply")
+            
+        if str(data.get('sos')) == '1' and str(data.get('sos')) != str(latest.get('sos')):
+            alerts.append('sos')
+            await process_generic_alert(data, vehicleInfo, 'panic')
+        
         if str(data.get('ignition')) != str(latest.get('ignition')):
             if str(data.get('ignition')) == '1':
                 print(f"[DEBUG] Sending ignition on alert for {imei} ")
