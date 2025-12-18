@@ -2,7 +2,7 @@ from datetime import datetime
 import httpx
 from pymongo import MongoClient
 
-mongo_client = MongoClient("mongodb://doadmin:4l239y815dQan0Vo@mongodb+srv://cordonnxDB-4f7df3c7.mongo.ondigitalocean.com/?tls=true&authSource=admin", tz_aware=True)
+mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@db-mongodb-blr1-96186-51f75312.mongo.ondigitalocean.com/admin?authSource=admin&tls=true", tz_aware=True)
 db = mongo_client["nnx"]
 
 moveInSyncSubscribed = db['moveInSyncSubscriptions']
