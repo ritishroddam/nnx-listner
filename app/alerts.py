@@ -18,7 +18,7 @@ DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
 GMAPS = googlemaps.Client(key="AIzaSyCHlZGVWKK4ibhGfF__nv9B55VxCc-US84")
 
-MONGO_URI = "mongodb://doadmin:4T81NSqj572g3o9f@mongodb.cordonnx.com:27017/admin?tls=true&authSource=admin"
+MONGO_URI = "mongodb://doadmin:4l239y815dQan0Vo@mongodb+srv://cordonnxDB-4f7df3c7.mongo.ondigitalocean.com/?tls=true&authSource=admin"
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI env var is required")
 
