@@ -30,7 +30,7 @@ last_emit_time = {}
 rawLogList = []
 rawLogImeiLiscenceMap = {}
 
-MONGO_URI = "mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin"
+MONGO_URI = "mongodb://doadmin:4T81NSqj572g3o9f@mongodb.cordonnx.com:27017/admin?tls=true&authSource=admin"
 if not MONGO_URI:
     raise RuntimeError("MONGO_URI env var is required")
 

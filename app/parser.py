@@ -9,7 +9,7 @@ from math import atan2, degrees, radians, sin, cos
 from geopy.distance import geodesic
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING, MongoClient
 
-mongo_client = MongoClient("mongodb+srv://doadmin:4T81NSqj572g3o9f@db-mongodb-blr1-27716-c2bd0cae.mongo.ondigitalocean.com/admin?tls=true&authSource=admin", tz_aware=True)
+mongo_client = MongoClient("mongodb://doadmin:4T81NSqj572g3o9f@mongodb.cordonnx.com:27017/admin?tls=true&authSource=admin", tz_aware=True)
 db = mongo_client["nnx"]
 
 FLAT_TO_AIS140 = {
