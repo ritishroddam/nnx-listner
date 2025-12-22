@@ -31,8 +31,9 @@ def update_distinct_atlanta():
         
         for imei in imeis:
             latest_doc = atlanta_collection.find_one(
-                {"imei": imei}
-            , sort=[("date_time", -1)])
+                {"imei": imei}, 
+                sort=[("date_time", -1)]
+            )
             
             if latest_doc:
                 latest_doc.pop('_id', None)
