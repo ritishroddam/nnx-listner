@@ -57,63 +57,83 @@ def update_distinct_atlanta():
 def atlantaStatusData():
     utc_now = datetime.now(timezone.utc)
     seven_days_ago = utc_now - timedelta(days=7)
-    pipeline = [
-        {"$match": {"date_time": {"$gte": seven_days_ago, "$lte": utc_now}}},
-        {"$sort": {"date_time": -1}},
-        {"$group": {
-            "_id": "$imei",
-            "latest": {"$first": "$$ROOT"},
-            "history": {"$push": {
-                "date_time": "$date_time",
-                "ignition": "$ignition",
-                "speed": "$speed"
-            }}
-        }},
-    ]
-    results = list(atlanta_collection.aggregate(pipeline))
-    for doc in results:        
-        status_collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": doc},
-            upsert=True
-        )
-        
-    pipeline = [
-        {"$match": {"gps.timestamp": {"$gte": seven_days_ago, "$lte": utc_now}}},
-        {"$sort": {"gps.timestamp": -1}},
-        {"$group": {
-            "_id": "$imei",
-            "timestamp": {"$first": "$gps.timestamp"},
-            "ignition": {"$first": "$telemetry.ignition"},
-            "speed": {"$first": "$telemetry.speed"},
-            "gsm_sig": {"$first": "$network.gsmSignal"},
-            "history": {"$push": {
-                "date_time": "$gps.timestamp",
-                "ignition": "$telemetry.ignition",
-                "speed": "$telemetry.speed"
-            }}
-        }},
-        {"$project": {
-            "_id": 1,
-            "latest": {
-                "date_time": "$timestamp",
-                "ignition": "$ignition",
-                "speed": "$speed",
-                "gsm_sig": "$gsm_sig"
-            },
-            "history": 1
-        }},
-    ]
 
-    atlantaais140Results = list(atlantaAis140.aggregate(pipeline))
+    cursor = atlanta_collection.find(
+        {"date_time": {"$gte": seven_days_ago, "$lte": utc_now}},
+        {
+            "_id": 0,
+            "imei": 1,
+            "date_time": 1,
+            "ignition": 1,
+            "speed": 1,
+        },
+    ).sort("date_time", -1)
 
-    for doc in atlantaais140Results:
-        doc["latest"]["date"], doc["latest"]["time"] = _convert_date_time_emit(doc["latest"]["date_time"])
-        atlantaAis140Status.update_one(
-            {"_id": doc["_id"]},
-            {"$set": doc},
-            upsert=True
+    grouped = {}
+    for doc in cursor:
+        imei = doc.get("imei")
+        if not imei:
+            continue
+        if imei not in grouped:
+            grouped[imei] = {
+                "_id": imei,
+                "latest": doc,
+                "history": [],
+            }
+        grouped[imei]["history"].append(
+            {
+                "date_time": doc.get("date_time"),
+                "ignition": doc.get("ignition"),
+                "speed": doc.get("speed"),
+            }
         )
+
+    for doc in grouped.values():
+        status_collection.update_one({"_id": doc["_id"]}, {"$set": doc}, upsert=True)
+
+    cursor = atlantaAis140.find(
+        {"gps.timestamp": {"$gte": seven_days_ago, "$lte": utc_now}},
+        {
+            "_id": 0,
+            "imei": 1,
+            "gps.timestamp": 1,
+            "telemetry.ignition": 1,
+            "telemetry.speed": 1,
+            "network.gsmSignal": 1,
+        },
+    ).sort("gps.timestamp", -1)
+
+    grouped_ais = {}
+    for doc in cursor:
+        imei = doc.get("imei")
+        if not imei:
+            continue
+        ts = doc.get("gps", {}).get("timestamp")
+        ignition = doc.get("telemetry", {}).get("ignition")
+        speed = doc.get("telemetry", {}).get("speed")
+        gsm_sig = doc.get("network", {}).get("gsmSignal")
+
+        if imei not in grouped_ais:
+            grouped_ais[imei] = {
+                "_id": imei,
+                "latest": {
+                    "date_time": ts,
+                    "ignition": ignition,
+                    "speed": speed,
+                    "gsm_sig": gsm_sig,
+                },
+                "history": [],
+            }
+
+        grouped_ais[imei]["history"].append(
+            {"date_time": ts, "ignition": ignition, "speed": speed}
+        )
+
+    for doc in grouped_ais.values():
+        doc["latest"]["date"], doc["latest"]["time"] = _convert_date_time_emit(
+            doc["latest"]["date_time"]
+        )
+        atlantaAis140Status.update_one({"_id": doc["_id"]}, {"$set": doc}, upsert=True)
 
 if __name__ == '__main__':
     while True:
