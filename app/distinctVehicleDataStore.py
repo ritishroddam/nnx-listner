@@ -27,29 +27,20 @@ def _convert_date_time_emit(date):
 def update_distinct_atlanta():
     try:
         print("Successfully running distinct Vehicle")
-        all_documents = list(atlanta_collection.aggregate([
-                {"$match": {"gps": "A"}},
-                {"$sort": {"date_time": -1}},
-                {
-                    "$group": {
-                        "_id": "$imei",
-                        "latest_doc": {"$first": "$$ROOT"}
-                    }
-                },
-                {"$replaceRoot": {"newRoot": "$latest_doc"}}
-            ]))
+        imeis = atlanta_collection.distinct('imei')
         
-        print(f"Fetched {len(all_documents)} documents from the atlanta collection")
-
-        for doc in all_documents:
-            doc.pop('_id', None)
-
-        distinct_atlanta_collection.delete_many({})
-
-        if all_documents:
-            distinct_atlanta_collection.insert_many(all_documents)
-
-        print('Distinct documents updated successfully')
+        for imei in imeis:
+            latest_doc = atlanta_collection.find_one(
+                {"imei": imei}
+            , sort=[("date_time", -1)])
+            
+            if latest_doc:
+                latest_doc.pop('_id', None)
+                distinct_atlanta_collection.update_one(
+                    {"_id": imei},
+                    {"$set": latest_doc},
+                    upsert=True
+                )
 
     except Exception as e:
         print(f'Error updating distinct documents: {str(e)}')
