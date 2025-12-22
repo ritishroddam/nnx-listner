@@ -23,7 +23,7 @@ comamandImeiList = []
 rawLogList = []
 rawLogImeiLiscenceMap = {}
 
-mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@db-mongodb-blr1-96186-51f75312.mongo.ondigitalocean.com/admin?authSource=admin&tls=true", tz_aware=True)
+mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186", tz_aware=True)
 db = mongo_client["nnx"]
 
 collection = db['atlanta']

@@ -7,7 +7,7 @@ import socketio
 
 sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed certs
 
-mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@db-mongodb-blr1-96186-51f75312.mongo.ondigitalocean.com/admin?authSource=admin&tls=true")
+mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186")
 db = mongo_client["nnx"]
 atlanta_collection = db['atlanta']
 distinct_atlanta_collection = db['distinctAtlanta']
