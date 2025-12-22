@@ -55,6 +55,8 @@ def atlantaStatusData():
         {
             "_id": 0,
             "imei": 1,
+            "date": 1,
+            "time": 1,
             "date_time": 1,
             "ignition": 1,
             "speed": 1,
