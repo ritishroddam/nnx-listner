@@ -10,7 +10,6 @@ sio = socketio.Client(ssl_verify=False)  # Disable verification for self-signed 
 mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186")
 db = mongo_client["nnx"]
 atlanta_collection = db['atlanta']
-distinct_atlanta_collection = db['distinctAtlanta']
 vehicle_inventory_collection = db['vehicle_inventory']
 status_collection = db['statusAtlanta']
 atlantaAis140 = db['atlantaAis140']
@@ -23,31 +22,10 @@ def _convert_date_time_emit(date):
     # Convert UTC datetime to IST (UTC+5:30)
     ist = date.astimezone(timezone(timedelta(hours=5, minutes=30)))
     return ist.strftime("%d%m%y"), ist.strftime("%H%M%S")
-
-def update_distinct_atlanta():
-    try:
-        print("Successfully running distinct Vehicle")
-        imeis = atlanta_collection.distinct('imei')
-        
-        for imei in imeis:
-            latest_doc = atlanta_collection.find_one(
-                {"imei": imei}, 
-                sort=[("date_time", -1)]
-            )
-            
-            if latest_doc:
-                latest_doc.pop('_id', None)
-                distinct_atlanta_collection.update_one(
-                    {"_id": imei},
-                    {"$set": latest_doc},
-                    upsert=True
-                )
-
-    except Exception as e:
-        print(f'Error updating distinct documents: {str(e)}')
         
 def atlantaStatusData():
     utc_now = datetime.now(timezone.utc)
+    utc_now = utc_now.replace(hour = 23, minute = 59, second = 59)
     seven_days_ago = utc_now - timedelta(days=7)
 
     cursor = atlanta_collection.find(
@@ -131,6 +109,5 @@ def atlantaStatusData():
 
 if __name__ == '__main__':
     while True:
-        update_distinct_atlanta()
         atlantaStatusData()
         time.sleep(10)  # Wait for 60 seconds before running the function again
