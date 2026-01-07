@@ -647,6 +647,17 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     # Only CP -> latest
                     if ptype == "LOCATION":
                         await latest_queue.put(parsed)
+                    
+                    exists = await loc_coll.find_one(
+                        {
+                            "imei": parsed.get("imei"),
+                            "gps.timestamp": parsed.get("gps", {}).get("timestamp")
+                        },
+                        {"_id": 1}
+                    )
+                    
+                    if exists:
+                        continue
 
                     if parsed.get("gps", {}).get("gpsStatus") ==  0:
                         continue
