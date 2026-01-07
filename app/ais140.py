@@ -68,6 +68,7 @@ health_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
 # -----------------------
 
 def _should_emit(imei, date_time):
+    
     if imei not in last_emit_time or date_time - last_emit_time[imei] > timedelta(seconds=1):
         last_emit_time[imei] = date_time
         return True
@@ -647,8 +648,13 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     if ptype == "LOCATION":
                         await latest_queue.put(parsed)
 
+                    if parsed.get("gps", {}).get("gpsStatus") ==  0:
+                        continue
+                    
                     emit_data = await parse_for_emit(parsed)
                     await dataToAlertParser(emit_data)
+                    
+                    
                     if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
                         _ensure_socket_connection()
                         if sio.connected:
