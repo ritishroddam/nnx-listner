@@ -1,7 +1,6 @@
 import os
 import asyncio
 import googlemaps
-import socketio
 
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple, Dict, Any, List
