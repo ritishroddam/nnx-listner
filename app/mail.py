@@ -1,8 +1,12 @@
 import http.client
 import json
 from datetime import datetime, timezone
+from pymongo import MongoClient
 
 # conn = http.client.HTTPSConnection("control.msg91.com")
+
+mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186", tz_aware=True)
+db = mongo_client["nnx"]
 
 def buildVariable(company, data):
     variable = {

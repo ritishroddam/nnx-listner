@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
 from pymongo import MongoClient
 
@@ -6,6 +6,7 @@ mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mo
 db = mongo_client["nnx"]
 
 moveInSyncSubscribed = db['moveInSyncSubscriptions']
+moveInSyncLogs = db['moveInSyncLogs']
 
 getMoveInSyncAlerts = {
     'speed': 'OVERSPEEDING',
@@ -55,6 +56,12 @@ async def sendDataToMoveInSync(data, alerts, date_time):
             )
         response.raise_for_status()
         print(f"[INFO] MoveInSync response: {response.text}")
+        moveInSyncLogs.insert_one({
+            'imei': imei,
+            'payload': payload,
+            'response': response.text,
+            'timestamp': datetime.now(timezone.utc),
+        })
     except httpx.HTTPError as exc:
         print(f"[ERROR] MoveInSync push failed: {exc}")
     
