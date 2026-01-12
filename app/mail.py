@@ -7,6 +7,7 @@ from pymongo import MongoClient
 
 mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186", tz_aware=True)
 db = mongo_client["nnx"]
+emailLogs = db['emailLogs']
 
 def buildVariable(company, data):
     variable = {
@@ -83,6 +84,15 @@ def buildAndSendEmail(data, company, recepients):
                 }
             )
             print(var.acknowledged)
+            
+        emailLogs.insert_one({
+            'LicensePlateNumber': data.get('LicensePlateNumber'),
+            'payload': payload,
+            'response_status': res.status,
+            'response_reason': res.reason or "",
+            'response_data': emailData.decode("utf-8"),
+            'timestamp': datetime.now(timezone.utc),
+        })
 
         print(emailData.decode("utf-8"))
     except Exception as e:
