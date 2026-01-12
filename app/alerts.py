@@ -190,6 +190,15 @@ async def processDataForGeofence(data, geofenceDict, geofences, companyName, veh
                         if 'geofence_alerts' not in alerts_list:
                             continue
                         
+                        userEmailsList = userConfig.get('alert_emails', [])
+                        
+                        if userEmailsList:
+                            for email in userEmailsList:
+                                userData.append({
+                                    "username": user.get('username'),
+                                    "email": email,
+                                })
+                        
                         userData.append({
                             "username": user.get('username'),
                             "email": user.get('email')
