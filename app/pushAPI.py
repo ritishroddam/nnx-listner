@@ -58,6 +58,7 @@ async def sendDataToMoveInSync(data, alerts, date_time):
         print(f"[INFO] MoveInSync response: {response.text}")
         moveInSyncLogs.insert_one({
             'imei': imei,
+            'LicensePlateNumber': data.get('LicensePlateNumber'),
             'payload': payload,
             'response': response.text,
             'timestamp': datetime.now(timezone.utc),
