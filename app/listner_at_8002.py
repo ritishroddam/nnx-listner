@@ -595,6 +595,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     try:
         while True:
             chunk = await asyncio.wait_for(reader.read(4096), timeout=READ_TIMEOUT)
+            print(f"[{datetime.now()}] Read {chunk} bytes from {addr}")
             if not chunk:
                 print(f"[{datetime.now()}] - Disconnect {addr}")
                 break
