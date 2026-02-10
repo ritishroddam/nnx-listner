@@ -206,11 +206,11 @@ def _parse_neighbors(neigh_fields: List[str]) -> List[Dict[str, Any]]:
     res: List[Dict[str, Any]] = []
     for i in range(0, len(neigh_fields), 3):
         try:
-            nmr = neigh_fields[i]
+            gsmSignal = _to_int(neigh_fields[i])
             lac = neigh_fields[i + 1]
             cell_id = neigh_fields[i + 2]
             if cell_id:
-                res.append({"cellId": cell_id, "lac": lac, "nmr": nmr})
+                res.append({"cellId": cell_id, "lac": lac, "nmr": gsmSignal})
         except Exception:
             continue
     return res
@@ -334,7 +334,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         lat, lon = _ns_ew_to_signed(lat, lat_dir, lon, lon_dir)
 
         # neighbors slice inclusive of index 45 -> [35:46]
-        neighbors = _parse_neighbors(parts[35:46])
+        neighbors = _parse_neighbors(parts[34:46])
         
         if g(5) == "10":
             padded_date = _pad_left(date_raw, 8)
@@ -353,7 +353,12 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 db['sos_logs'].insert_one(packet)
             except Exception as e:
                 print("Error logging SOS alert to MongoDB:", e)
-
+                
+        canData = {}
+        if g(5) == "2000":
+            ##implementation for CAN data parsing will go here when we have a sample packet with CAN data (Type=2000 in your example)
+            pass
+        
         doc: Dict[str, Any] = {
             "type": "LOCATION",
             "imei": imei,
@@ -390,7 +395,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "internalBatteryVoltage": _to_float(g(26)),
                 "emergencyStatus": _to_int(g(27)),
                 "tamper": g(28),
-                "odometer": _to_float(g(49)),
+                "odometer": _to_float(g(51)),
             },
             "network": {
                 "operator": g(22),
@@ -399,15 +404,17 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "mnc": _to_int(g(31)),
                 "lac": g(32),
                 "cellId": g(33),
-                "nmr": g(34),
                 "neighbors": neighbors,
             },
             "io": {
                 "digitalInputs": g(46),
                 "digitalOutputs": g(47),
+                "analog1": _to_float(g(49)),
+                "analog2": _to_float(g(50)),
                 "currentGeoFence": _to_float(g(50)),
                 "RFID": g(51),
             },
+            "canData": canData,  # Placeholder for future CAN bus parsing (e.g. OBD2)
             "checksum": (g(52) or "").replace("*", "").strip(),
         }
         return doc
@@ -625,58 +632,51 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     raw = pkt_bytes.decode("latin-1", errors="replace")
                     
                 raw = raw.encode('unicode_escape').decode('ascii')
-                
-                print(f"[{datetime.now()} Data] Received from {addr}: {raw}")
-                
-                if not raw.startswith("$"):
-                    print(f"[{datetime.now()} Data] Invalid packet from {addr}: {raw}")
-                    continue
-                
-###############################
+
                 # Parse first (so raw log gets IMEI/VRN)
-                # parsed = parse_packet(raw)
+                parsed = parse_packet(raw)
 
-                # # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
-                # if parsed.get("imei") in rawLogList:
-                #     await raw_queue.put({
-                #         "imei": parsed.get("imei"),
-                #         "LicensePlateNumber": rawLogImeiLiscenceMap.get(parsed.get("imei")),
-                #         "raw_data": raw,
-                #         "timestamp": datetime.now(timezone.utc),
-                #     })
+                # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
+                if parsed.get("imei") in rawLogList:
+                    await raw_queue.put({
+                        "imei": parsed.get("imei"),
+                        "LicensePlateNumber": rawLogImeiLiscenceMap.get(parsed.get("imei")),
+                        "raw_data": raw,
+                        "timestamp": datetime.now(timezone.utc),
+                    })
 
-                # # Enqueue structured into history
-                # ptype = parsed.get("type")
-                # if ptype == "LOCATION":
-                #     # Mirror gps.timestamp into top-level timestamp if available
-                #     # (Already done for CP; keep as-is for others)
-                #     await loc_queue.put(parsed)
-                #     # Only CP -> latest
-                #     if ptype == "LOCATION":
-                #         await latest_queue.put(parsed)
+                # Enqueue structured into history
+                ptype = parsed.get("type")
+                if ptype == "LOCATION":
+                    # Mirror gps.timestamp into top-level timestamp if available
+                    # (Already done for CP; keep as-is for others)
+                    await loc_queue.put(parsed)
+                    # Only CP -> latest
+                    if ptype == "LOCATION":
+                        await latest_queue.put(parsed)
 
-                #     if parsed.get("gps", {}).get("gpsStatus") ==  0:
-                #         continue
+                    if parsed.get("gps", {}).get("gpsStatus") ==  0:
+                        continue
                     
-                #     emit_data = await parse_for_emit(parsed)
-                #     await dataToAlertParser(emit_data)
+                    emit_data = await parse_for_emit(parsed)
+                    await dataToAlertParser(emit_data)
                     
                     
-                #     if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
-                #         _ensure_socket_connection()
-                #         if sio.connected:
-                #             try:
-                #                 print("[DEBUG] sending Data of AIS140 Device for alerts")
-                #                 if parsed.get("gps", {}).get("gpsStatus") ==  1:
-                #                     sio.emit('vehicle_live_update', emit_data)
-                #                     sio.emit('vehicle_update', emit_data)
-                #             except Exception as e:
-                #                 print(f"[{datetime.now()}] ! Socket.IO emit error: {e}")
-                #         else:
-                #             print(f"[{datetime.now()}] ! Socket.IO not connected, skipping emit")
+                    if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
+                        _ensure_socket_connection()
+                        if sio.connected:
+                            try:
+                                print("[DEBUG] sending Data of AIS140 Device for alerts")
+                                if parsed.get("gps", {}).get("gpsStatus") ==  1:
+                                    sio.emit('vehicle_live_update', emit_data)
+                                    sio.emit('vehicle_update', emit_data)
+                            except Exception as e:
+                                print(f"[{datetime.now()}] ! Socket.IO emit error: {e}")
+                        else:
+                            print(f"[{datetime.now()}] ! Socket.IO not connected, skipping emit")
 
-                # elif ptype == "HEALTH":
-                #     await health_queue.put(parsed)
+                elif ptype == "HEALTH":
+                    await health_queue.put(parsed)
 
 #####################
                 # ACKs (only if device requires; disabled by default)
