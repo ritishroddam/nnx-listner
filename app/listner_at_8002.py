@@ -301,6 +301,12 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         return pkt
 
     # Trim trailing '*' (checksum terminator visible in examples)
+    
+    raw_split1 = raw[:1]
+    raw_split2 = raw[1:]
+    
+    raw = raw_split1 + ',' + raw_split2
+    
     trimmed = raw[:-1] if raw.endswith("*") else raw
     parts = [p.strip() for p in trimmed.split(",")]
     if len(parts) < 2:
@@ -315,7 +321,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         return parts[i] if i < len(parts) else None
 
     # ---------- CP (Location) ----------
-    if header == "CP":
+    if header == "Header" and len(parts) >= 53:
         # Index map from your sample:
         # 0:$ 1:CP 2:Vendor 3:FW 4:Type 5:ID 6:Status 7:IMEI 8:VRN 9:Fix
         # 10:Date 11:Time 12:Lat 13:N/S 14:Lon 15:E/W 16:Speed 17:Heading 18:Sats 19:Alt
@@ -420,7 +426,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         return doc
 
     # ---------- HP (Health) ----------
-    if header == "HP":
+    if header == "Header" and len(parts) == 13:
         vendor = g(2); firmware = g(3)
         imei = g(4)
         doc = {
