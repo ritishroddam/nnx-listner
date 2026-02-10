@@ -627,6 +627,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 raw = raw.encode('unicode_escape').decode('ascii')
                 
                 print(f"[{datetime.now()} Data] Received from {addr}: {raw}")
+                
+                if not raw.startswith("$"):
+                    print(f"[{datetime.now()} Data] Invalid packet from {addr}: {raw}")
+                    continue
+                
 ###############################
                 # Parse first (so raw log gets IMEI/VRN)
                 # parsed = parse_packet(raw)
