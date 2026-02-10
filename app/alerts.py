@@ -526,6 +526,9 @@ async def dataToAlertParser(data):
         imei = data.get('imei')
 
         vehicleInfo = await vehicleCOllection.find_one({"IMEI": imei})
+        
+        if not vehicleInfo:
+            return
 
         speedThreshold = float(vehicleInfo.get("normalSpeed", '60')) if vehicleInfo else 60.00
         print("[DEBUG] Successfully fetched speed threshold")
