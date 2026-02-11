@@ -418,7 +418,6 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "analog1": _to_float(g(49)),
                 "analog2": _to_float(g(50)),
                 "currentGeoFence": _to_float(g(50)),
-                "RFID": g(51),
             },
             "canData": canData,  # Placeholder for future CAN bus parsing (e.g. OBD2)
             "checksum": (g(52) or "").replace("*", "").strip(),
