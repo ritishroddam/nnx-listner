@@ -686,7 +686,6 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
                 # ACKs (only if device requires; disabled by default)
                 # if ptype == "EMERGENCY" and parsed.get("imei"):
-                print(parsed)
                 if parsed.get("imei"):
                     ack = f"$123,${parsed['imei']},aquila123,diag,100*"
                     writer.write(ack.encode())
