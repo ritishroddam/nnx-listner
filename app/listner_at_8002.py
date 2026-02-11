@@ -683,7 +683,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 elif ptype == "HEALTH":
                     await health_queue.put(parsed)
 
-#####################
+
                 # ACKs (only if device requires; disabled by default)
                 # if ptype == "EMERGENCY" and parsed.get("imei"):
                 ack = f"$123,${parsed['imei']},aquila123,diag,100*"
