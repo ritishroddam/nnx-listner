@@ -66,16 +66,6 @@ health_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue(maxsize=50_000)
 # Helpers
 # -----------------------
 
-def _decode_packet(pkt_bytes: bytes) -> str:
-    try:
-        raw = pkt_bytes.decode("utf-8", errors="replace")
-    except Exception:
-        raw = pkt_bytes.decode("latin-1", errors="replace")
-        
-    raw = raw.encode('unicode_escape').decode('ascii')
-    
-    return raw
-
 def _should_emit(imei, date_time):
     
     if imei not in last_emit_time or date_time - last_emit_time[imei] > timedelta(seconds=1):
@@ -626,73 +616,74 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             # Parse multiple packets in the buffer.
             # AIS140 packets start with '$' and end with '*'
             while True:
-                raw_packets = []
-                start = None
-                end = None
-                while True:
-                    start = buffer.find(b"$Header")
-                    if start == -1:
-                        if len(buffer) > 1024 * 1024:
-                            buffer.clear()
-                        break
-                    end = buffer.find(b"\r\n", start + 1)
-                    if end == -1:
-                        if start > 0:
-                            del buffer[:start]  # discard leading junk
-                        break
+                start = buffer.find(b"$")
+                if start == -1:
+                    if len(buffer) > 1024 * 1024:
+                        buffer.clear()
+                    break
+                end = buffer.find(b"\r\n", start + 2)
+                if end == -1:
+                    if start > 0:
+                        del buffer[:start]  # discard leading junk
+                    break
 
-                    pkt_bytes = buffer[start:end + 2]  # include '\r\n'
+                pkt_bytes = buffer[start:end + 2]  # include '*'
+                del buffer[:end + 2]
 
-                    raw_packets.append(bytes(pkt_bytes))
+                # Decode robustly
+                try:
+                    raw = pkt_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    raw = pkt_bytes.decode("latin-1", errors="replace")
                     
-                    del buffer[:end + 2]
+                raw = raw.encode('unicode_escape').decode('ascii')
 
-                for pkt_bytes in raw_packets:
-                    raw = _decode_packet(pkt_bytes)
+                # Parse first (so raw log gets IMEI/VRN)
+                parsed = parse_packet(raw)
+                
+                print(parsed)
 
-                    parsed = parse_packet(raw)
+                # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
+                if parsed.get("imei") in rawLogList:
+                    await raw_queue.put({
+                        "imei": parsed.get("imei"),
+                        "LicensePlateNumber": rawLogImeiLiscenceMap.get(parsed.get("imei")),
+                        "raw_data": raw,
+                        "timestamp": datetime.now(timezone.utc),
+                    })
 
-                    # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
-                    if parsed.get("imei") in rawLogList:
-                        await raw_queue.put({
-                            "imei": parsed.get("imei"),
-                            "LicensePlateNumber": rawLogImeiLiscenceMap.get(parsed.get("imei")),
-                            "raw_data": raw,
-                            "timestamp": datetime.now(timezone.utc),
-                        })
-
-                    # Enqueue structured into history
-                    ptype = parsed.get("type")
+                # Enqueue structured into history
+                ptype = parsed.get("type")
+                if ptype == "LOCATION":
+                    # Mirror gps.timestamp into top-level timestamp if available
+                    # (Already done for CP; keep as-is for others)
+                    await loc_queue.put(parsed)
+                    # Only CP -> latest
                     if ptype == "LOCATION":
-                        # Mirror gps.timestamp into top-level timestamp if available
-                        # (Already done for CP; keep as-is for others)
-                        await loc_queue.put(parsed)
-                        # Only CP -> latest
-                        if ptype == "LOCATION":
-                            await latest_queue.put(parsed)
+                        await latest_queue.put(parsed)
 
-                        if parsed.get("gps", {}).get("gpsStatus") ==  0:
-                            continue
-                        
-                        emit_data = await parse_for_emit(parsed)
-                        await dataToAlertParser(emit_data)
+                    if parsed.get("gps", {}).get("gpsStatus") ==  0:
+                        continue
+                    
+                    emit_data = await parse_for_emit(parsed)
+                    await dataToAlertParser(emit_data)
+                    
+                    
+                    if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
+                        _ensure_socket_connection()
+                        if sio.connected:
+                            try:
+                                print("[DEBUG] sending Data of AIS140 Device for alerts")
+                                if parsed.get("gps", {}).get("gpsStatus") ==  1:
+                                    sio.emit('vehicle_live_update', emit_data)
+                                    sio.emit('vehicle_update', emit_data)
+                            except Exception as e:
+                                print(f"[{datetime.now()}] ! Socket.IO emit error: {e}")
+                        else:
+                            print(f"[{datetime.now()}] ! Socket.IO not connected, skipping emit")
 
-
-                        if _should_emit(parsed.get("imei"), parsed.get("gps", {}).get("timestamp")):
-                            _ensure_socket_connection()
-                            if sio.connected:
-                                try:
-                                    print("[DEBUG] sending Data of AIS140 Device for alerts")
-                                    if parsed.get("gps", {}).get("gpsStatus") ==  1:
-                                        sio.emit('vehicle_live_update', emit_data)
-                                        sio.emit('vehicle_update', emit_data)
-                                except Exception as e:
-                                    print(f"[{datetime.now()}] ! Socket.IO emit error: {e}")
-                            else:
-                                print(f"[{datetime.now()}] ! Socket.IO not connected, skipping emit")
-
-                    elif ptype == "HEALTH":
-                        await health_queue.put(parsed)
+                elif ptype == "HEALTH":
+                    await health_queue.put(parsed)
 
 
                 # ACKs (only if device requires; disabled by default)
