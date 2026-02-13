@@ -641,7 +641,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 # Parse first (so raw log gets IMEI/VRN)
                 parsed = parse_packet(raw)
                 
-                print(parsed)
+                print(f"[{datetime.now()}] Parsed {parsed} bytes from {addr}")
 
                 # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
                 if parsed.get("imei") in rawLogList:
