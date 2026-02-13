@@ -688,10 +688,10 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
                 # ACKs (only if device requires; disabled by default)
                 # if ptype == "EMERGENCY" and parsed.get("imei"):
-                if parsed.get("imei"):
-                    ack = f"$123,${parsed['imei']},aquila123,diag,100*"
-                    writer.write(ack.encode())
-                    await writer.drain()
+                # if parsed.get("imei"):
+                #     ack = f"$123,${parsed['imei']},aquila123,diag,100*"
+                #     writer.write(ack.encode())
+                #     await writer.drain()
 
     except asyncio.TimeoutError:
         print(f"[{datetime.now()}] ! Timeout {addr} after {READ_TIMEOUT}s")
