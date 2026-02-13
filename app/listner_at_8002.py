@@ -627,6 +627,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             # AIS140 packets start with '$' and end with '*'
             while True:
                 raw_packets = []
+                start = None
+                end = None
                 while True:
                     start = buffer.find(b"$Header")
                     if start == -1:
@@ -639,16 +641,15 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                             del buffer[:start]  # discard leading junk
                         break
 
-                    pkt_bytes = buffer[start:end + 1]  # include '*'
+                    pkt_bytes = buffer[start:end + 2]  # include '\r\n'
 
-                    raw_packets.append(pkt_bytes)
+                    raw_packets.append(bytes(pkt_bytes))
                     
-                    buffer = buffer[end + 1:]
+                    del buffer[:end + 2]
 
                 for pkt_bytes in raw_packets:
                     raw = _decode_packet(pkt_bytes)
 
-                # Parse first (so raw log gets IMEI/VRN)
                     parsed = parse_packet(raw)
 
                     # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
