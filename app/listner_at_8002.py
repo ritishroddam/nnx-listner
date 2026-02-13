@@ -637,11 +637,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     raw = pkt_bytes.decode("latin-1", errors="replace")
                     
                 raw = raw.encode('unicode_escape').decode('ascii')
+                
+                print(raw)
 
                 # Parse first (so raw log gets IMEI/VRN)
                 parsed = parse_packet(raw)
-                
-                print(parsed)
 
                 # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
                 if parsed.get("imei") in rawLogList:
