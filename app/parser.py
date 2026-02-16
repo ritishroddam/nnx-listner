@@ -1,11 +1,11 @@
 from datetime import datetime, timezone, timedelta
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING, MongoClient
 
-from app.canbus.engine import decode_with_profile
-from app.canbus.registry import load_profile
-from app.canbus.vehicle_profile_lookup import get_vehicle_profile
-from app.canbus.can_state_cache import update_can_state, get_last_can_state
-from app.canbus.history_manager import store_can_history_if_changed
+from canbus.engine import decode_with_profile
+from canbus.registry import load_profile
+from canbus.vehicle_profile_lookup import get_vehicle_profile
+from canbus.can_state_cache import update_can_state, get_last_can_state
+from canbus.history_manager import store_can_history_if_changed
 
 
 mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186", tz_aware=True)
