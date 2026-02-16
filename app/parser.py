@@ -1,13 +1,12 @@
-import os
-import asyncio
-import googlemaps
-import socketio
-
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Tuple, Dict, Any, List
-from math import atan2, degrees, radians, sin, cos
-from geopy.distance import geodesic
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING, MongoClient
+
+from app.canbus.engine import decode_with_profile
+from app.canbus.registry import load_profile
+from app.canbus.vehicle_profile_lookup import get_vehicle_profile
+from app.canbus.can_state_cache import update_can_state, get_last_can_state
+from app.canbus.history_manager import store_can_history_if_changed
+
 
 mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186", tz_aware=True)
 db = mongo_client["nnx"]
@@ -129,3 +128,17 @@ def getData(imei, date_filter, projection):
         converted.append(out_doc)
 
     return converted
+
+async def handle_can(imei, can_frames):
+    if can_frames:
+        profile_name = await get_vehicle_profile(imei)
+        profile = load_profile(profile_name)
+
+        decoded = decode_with_profile(can_frames, profile)
+
+        await store_can_history_if_changed(imei, decoded)
+        await update_can_state(imei, decoded)
+
+        return decoded
+    else:
+        return await get_last_can_state(imei)

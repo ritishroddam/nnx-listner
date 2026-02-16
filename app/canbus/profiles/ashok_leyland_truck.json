@@ -1,0 +1,41 @@
+{
+  "profile_name": "ashok_leyland_truck",
+
+  "signals": {
+
+    "engine_rpm": {
+      "id_type":"pgn","id":61444,
+      "type":"uint","start_byte":4,"length":2,"scale":0.125
+    },
+
+    "accelerator_pct": {
+      "id_type":"pgn","id":61443,
+      "type":"uint","start_byte":2,"length":1,"scale":0.4
+    },
+
+    "engine_hours": {
+      "id_type":"pgn","id":65253,
+      "type":"uint","start_byte":1,"length":4,"scale":0.05
+    },
+
+    "fuel_rate_lph": {
+      "id_type":"pgn","id":65266,
+      "type":"uint","start_byte":1,"length":2,"scale":0.05
+    },
+
+    "coolant_temp_c": {
+      "id_type":"pgn","id":65262,
+      "type":"uint","start_byte":1,"length":1,"offset":-40
+    },
+
+    "vehicle_distance_km": {
+      "id_type":"pgn","id":65248,
+      "type":"uint","start_byte":1,"length":4,"scale":0.005
+    },
+
+    "fuel_level_pct": {
+      "id_type":"pgn","id":65276,
+      "type":"uint","start_byte":1,"length":1,"scale":0.4
+    }
+  }
+}

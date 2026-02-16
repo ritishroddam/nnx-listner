@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
 from alerts import dataToAlertParser
+from parser import handle_can
 
 # -----------------------
 # Config
@@ -287,7 +288,121 @@ async def parse_for_emit(parsedData):
     }
     return json_data
 
-def parse_packet(raw: str) -> Dict[str, Any]:
+async def extract_can_frames(raw_packet: str):
+    """
+    Extract CAN frames from AIS140 extended packet.
+    Returns list of {id,data}
+    """
+
+    if ",02|" not in raw_packet:
+        return []
+
+    try:
+        # Step 1 — isolate CAN portion (remove checksum)
+        can_part = raw_packet.split(",02|", 1)[1]
+        can_part = can_part.split("*")[0]
+
+        # Step 2 — split frames by |
+        parts = can_part.split("|")
+
+        # parts[0] is event timestamp like 00:00 → ignore
+        parts = parts[1:]
+
+        frames = []
+
+        for part in parts:
+            if ":" not in part:
+                continue
+
+            can_id, can_data = part.split(":", 1)
+
+            # sanity checks
+            if len(can_id) != 8:
+                continue
+            if len(can_data) != 16:
+                continue
+
+            frames.append({
+                "id": can_id.upper(),
+                "data": can_data.upper()
+            })
+
+        return frames
+
+    except Exception as e:
+        print("CAN extraction error:", e)
+        return []
+
+
+async def parse_can_packet(g: str, vrn: str, imei: str, date_raw: str, time_raw: str, lat: float, lon: float, lat_dir: str, lon_dir: str, ts: datetime) -> Dict[str, Any]:
+    
+    raw_can_data = g(41)
+    
+    can_frames = await extract_can_frames(raw_can_data)
+    
+    if not can_frames:
+        return {}
+    
+    canData = await handle_can(imei, can_frames)
+    
+    doc: Dict[str, Any] = {
+        "type": "LOCATION",
+        "imei": imei,
+        "LicensePlateNumber": vrn if vrn not in ("", None) else None,
+        "timestamp": datetime.now(timezone.utc),
+        "vendor": g(2),
+        "firmware": g(3),
+        "packet": {
+            "type": g(4),
+            "id": g(5),
+            "status": g(6),
+            "frameNumber": _to_int(g(36)),
+        },
+        "gps": {
+            "date": _pad_left(date_raw, 8),       # raw ddmmyyyy (zero-padded)
+            "time": _pad_left(time_raw, 6),       # raw hhmmss (zero-padded)
+            "timestamp": ts,                      # ISO UTC (can be None if malformed)
+            "gpsStatus": _to_int(g(9)),
+            "lat": lat,
+            "lon": lon,
+            "latDir": lat_dir or None,
+            "lonDir": lon_dir or None,
+            "heading": _to_float(g(17)),
+            "numSatellites": _to_int(g(18)),
+            "altitude": _to_float(g(19)),
+            "pdop": _to_float(g(20)),
+            "hdop": _to_float(g(21)),
+        },
+        "telemetry": {
+            "speed": _to_float(g(16)),
+            "ignition": _to_int(g(23)),
+            "mainPower": _to_int(g(24)),
+            "mainBatteryVoltage": _to_float(g(25)),
+            "internalBatteryVoltage": _to_float(g(26)),
+            "emergencyStatus": _to_int(g(27)),
+            "tamper": g(28),
+            "odometer": _to_float(g(39)),
+        },
+        "network": {
+            "operator": g(22),
+            "gsmSignal": _to_int(g(29)),
+            "mcc": _to_int(g(30)),
+            "mnc": _to_int(g(31)),
+            "lac": g(32),
+            "cellId": g(33),
+        },
+        "io": {
+            "digitalInputs": g(34),
+            "digitalOutputs": g(35),
+            "analog1": _to_float(g(37)),
+            "analog2": _to_float(g(38)),
+        },
+        "canData": canData,  # Placeholder for future CAN bus parsing (e.g. OBD2)
+        "dataTypeIndicator": g(40),
+    }
+    return doc
+
+async def parse_packet(raw: str) -> Dict[str, Any]:
     """
     Robust parsing for:
       - CP: Location/Event (Table-4/5 in AIS140)  -> saved to history + latest (latest=CP only)
@@ -338,9 +453,6 @@ def parse_packet(raw: str) -> Dict[str, Any]:
         lat = _to_float(g(12)); lon = _to_float(g(14))
         lat_dir = g(13) or ""; lon_dir = g(15) or ""
         lat, lon = _ns_ew_to_signed(lat, lat_dir, lon, lon_dir)
-
-        # neighbors slice inclusive of index 45 -> [35:46]
-        neighbors = _parse_neighbors(parts[34:46])
         
         if g(5) == "10":
             padded_date = _pad_left(date_raw, 8)
@@ -360,10 +472,12 @@ def parse_packet(raw: str) -> Dict[str, Any]:
             except Exception as e:
                 print("Error logging SOS alert to MongoDB:", e)
                 
-        canData = {}
         if g(5) == "2000":
-            ##implementation for CAN data parsing will go here when we have a sample packet with CAN data (Type=2000 in your example)
-            pass
+            doc = await parse_can_packet(g, vrn, imei, date_raw, time_raw, lat, lon, lat_dir, lon_dir, ts)
+            return doc
+        
+        # neighbors slice inclusive of index 45 -> [35:46]
+        neighbors = _parse_neighbors(parts[34:46])
         
         doc: Dict[str, Any] = {
             "type": "LOCATION",
@@ -417,9 +531,7 @@ def parse_packet(raw: str) -> Dict[str, Any]:
                 "digitalOutputs": g(47),
                 "analog1": _to_float(g(49)),
                 "analog2": _to_float(g(50)),
-                "currentGeoFence": _to_float(g(50)),
             },
-            "canData": canData,  # Placeholder for future CAN bus parsing (e.g. OBD2)
             "checksum": (g(52) or "").replace("*", "").strip(),
         }
         return doc
@@ -639,7 +751,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 raw = raw.encode('unicode_escape').decode('ascii')
 
                 # Parse first (so raw log gets IMEI/VRN)
-                parsed = parse_packet(raw)
+                parsed = await parse_packet(raw)
 
                 # Enqueue raw (audit) -> include IMEI + VRN, and NO device address
                 if parsed.get("imei") in rawLogList:
