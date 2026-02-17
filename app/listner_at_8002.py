@@ -436,7 +436,7 @@ async def parse_packet(raw: str) -> Dict[str, Any]:
         return parts[i] if i < len(parts) else None
 
     # ---------- CP (Location) ----------
-    if header == "Header" and (len(parts) >= 53 or (len(parts) >= 43 and "02|" in raw)):
+    if header == "Header" and (len(parts) >= 41)):
         # Index map from your sample:
         # 0:$ 1:CP 2:Vendor 3:FW 4:Type 5:ID 6:Status 7:IMEI 8:VRN 9:Fix
         # 10:Date 11:Time 12:Lat 13:N/S 14:Lon 15:E/W 16:Speed 17:Heading 18:Sats 19:Alt
