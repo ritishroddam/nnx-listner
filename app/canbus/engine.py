@@ -10,7 +10,7 @@ def match_frame(rule, can_id):
 
 def decode_with_profile(frames, profile):
     results = {}
-    print(f"[DEBUG] Decoding CAN frames with profile: {profile.get('name', 'unknown')}")
+    print(f"[DEBUG] Decoding CAN frames with profile: {profile.get('profile_name', 'unknown')}")
     for frame in frames:
         can_id = frame["id"]
         data = bytes.fromhex(frame["data"])
