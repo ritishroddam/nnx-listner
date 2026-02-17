@@ -11,7 +11,7 @@ async def update_can_state(imei, signals, ts):
     print(f"[DEBUG] Updating CAN state for IMEI: {imei} with signals: {signals}")
     if not signals:
         return
-    device_can_data = vehicle_can_state_collection.find_one({"imei": imei}, {"updated_at": 1})
+    device_can_data = await vehicle_can_state_collection.find_one({"imei": imei}, {"updated_at": 1})
     last_updated_timestamp = device_can_data["updated_at"] if device_can_data else None
     if (ts - last_updated_timestamp).total_seconds() > 0:
         await vehicle_can_state_collection.update_one(
