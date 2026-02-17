@@ -299,6 +299,7 @@ async def extract_can_frames(raw_packet: str):
 
     try:
         # Step 1 — isolate CAN portion (remove checksum)
+        print(f"[DEBUG] Extracting CAN frames from raw packet: {raw_packet}")
         can_part = raw_packet.split(",02|", 1)[1]
         can_part = can_part.split("*")[0]
 
@@ -330,7 +331,7 @@ async def extract_can_frames(raw_packet: str):
         return frames
 
     except Exception as e:
-        print("CAN extraction error:", e)
+        print(f"[ERROR] CAN extraction error: {e}")
         return []
 
 
