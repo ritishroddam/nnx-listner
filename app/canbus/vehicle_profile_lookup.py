@@ -1,7 +1,9 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 
-client = AsyncIOMotorClient()
-db = client.tracking
+MONGO_URI = "mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186"
+mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(MONGO_URI, tz_aware=True)
+
+db = mongo_client['nnx']
 vehicle_collection = db['vehicle_inventory']
 
 async def get_vehicle_profile(imei: str) -> str:
