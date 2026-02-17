@@ -335,7 +335,7 @@ async def extract_can_frames(raw_packet: str):
         return []
 
 
-async def parse_can_packet(g: str, vrn: str, imei: str, date_raw: str, time_raw: str, lat: float, lon: float, lat_dir: str, lon_dir: str, ts: datetime) -> Dict[str, Any]:
+async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time_raw: str, lat: float, lon: float, lat_dir: str, lon_dir: str, ts: datetime) -> Dict[str, Any]:
     
     raw_can_data = g(41)
     
@@ -344,7 +344,7 @@ async def parse_can_packet(g: str, vrn: str, imei: str, date_raw: str, time_raw:
     if not can_frames:
         return {}
     
-    canData = await handle_can(imei, can_frames)
+    canData = await handle_can(imei, can_frames, ts)
     
     doc: Dict[str, Any] = {
         "type": "LOCATION",

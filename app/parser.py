@@ -129,7 +129,7 @@ def getData(imei, date_filter, projection):
 
     return converted
 
-async def handle_can(imei, can_frames):
+async def handle_can(imei, can_frames, ts):
     print("[DEBUG] Handling CAN frames for IMEI:", imei)
     if can_frames:
         profile_name = await get_vehicle_profile(imei)
@@ -138,8 +138,8 @@ async def handle_can(imei, can_frames):
 
         decoded = decode_with_profile(can_frames, profile)
 
-        await store_can_history_if_changed(imei, decoded)
-        await update_can_state(imei, decoded)
+        await store_can_history_if_changed(imei, decoded, ts)
+        await update_can_state(imei, decoded, ts)
         print(f"[DEBUG] Final decoded CAN signals for IMEI {imei}:", decoded)
         return decoded
     else:

@@ -10,7 +10,7 @@ vehicle_can_history_collection = db['vehicle_can_history']
 
 THRESHOLD = {"engine_rpm":50,"speed_kmh":1,"fuel_rate_lph":0.2,"soc_pct":1}
 
-async def store_can_history_if_changed(imei, new_signals):
+async def store_can_history_if_changed(imei, new_signals, ts):
     print(f"[DEBUG] Storing CAN history for IMEI: {imei} with signals: {new_signals}")
     last = await vehicle_can_state_collection.find_one({"imei": imei})
     old = last["signals"] if last else {}
@@ -23,6 +23,6 @@ async def store_can_history_if_changed(imei, new_signals):
     if changed:
         await vehicle_can_history_collection.insert_one({
             "imei": imei,
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": ts,
             "signals": changed
         })
