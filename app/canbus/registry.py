@@ -5,6 +5,7 @@ PROFILE_DIR = Path(__file__).parent / "profiles"
 
 def load_profile(name):
     try:
+        print(f"[DEBUG] Loading profile: {name}")
         with open(PROFILE_DIR / f"{name}.json") as f:
             return json.load(f)
     except:

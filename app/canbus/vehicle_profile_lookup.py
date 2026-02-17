@@ -8,6 +8,7 @@ vehicle_collection = db['vehicle_inventory']
 
 async def get_vehicle_profile(imei: str) -> str:
     vehicle = await vehicle_collection.find_one({"imei": imei})
+    print(f"[DEBUG] Vehicle data for IMEI {imei}:", vehicle)
     if vehicle and vehicle.get("vehicle_profile"):
         return vehicle["vehicle_profile"]
     return "generic_unknown"

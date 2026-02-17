@@ -8,6 +8,7 @@ db = mongo_client['nnx']
 vehicle_can_state_collection = db['vehicle_can_state']
 
 async def update_can_state(imei, signals):
+    print(f"[DEBUG] Updating CAN state for IMEI: {imei} with signals: {signals}")
     if not signals:
         return
     await vehicle_can_state_collection.update_one(
