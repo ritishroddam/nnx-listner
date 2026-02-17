@@ -294,7 +294,7 @@ async def extract_can_frames(raw_packet: str):
     Returns list of {id,data}
     """
 
-    if ",02|" not in raw_packet:
+    if "02|" not in raw_packet:
         return []
 
     try:
