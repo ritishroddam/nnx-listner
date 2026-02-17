@@ -471,7 +471,8 @@ async def parse_packet(raw: str) -> Dict[str, Any]:
                 db['sos_logs'].insert_one(packet)
             except Exception as e:
                 print("Error logging SOS alert to MongoDB:", e)
-                
+        
+        print(f"[DEBUG] Parsed packet with ID {g(5)} for IMEI {imei}")  
         if g(5) == "2000":
             doc = await parse_can_packet(g, vrn, imei, date_raw, time_raw, lat, lon, lat_dir, lon_dir, ts)
             return doc
