@@ -134,6 +134,7 @@ async def handle_can(imei, can_frames):
     if can_frames:
         profile_name = await get_vehicle_profile(imei)
         profile = load_profile(profile_name)
+        print(f"[DEBUG] Loaded profile '{profile_name}' for IMEI {imei}: {profile}")
 
         decoded = decode_with_profile(can_frames, profile)
 
