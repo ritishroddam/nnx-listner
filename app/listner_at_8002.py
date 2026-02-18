@@ -806,9 +806,9 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 #     await writer.drain()
 
     except asyncio.TimeoutError:
-        print(f"[{datetime.now()}] ! Timeout {addr} after {READ_TIMEOUT}s")
+        print(f"[{datetime.now()} ERROR] Timeout {addr} after {READ_TIMEOUT}s")
     except Exception as e:
-        print(f"[{datetime.now()}] ! Error {addr}: {e}")
+        print(f"[{datetime.now()} ERROR] {addr}: {e}")
     finally:
         try:
             writer.close()
@@ -837,7 +837,7 @@ async def update_raw_log_list():
                     rawLogList.append(imei)
                     rawLogImeiLiscenceMap[imei] = result.get('LicensePlateNumber', 'Unknown')
         except Exception as e:
-            print(f"[{datetime.now()}] ! Error updating raw log list: {e}")
+            print(f"[{datetime.now()} ERROR] updating raw log list: {e}")
         await asyncio.sleep(300)
 
 
