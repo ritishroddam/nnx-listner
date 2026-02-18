@@ -8,6 +8,11 @@
       "type":"uint","start_byte":4,"length":2,"scale":0.125
     },
 
+    "accelerator_pct": {
+      "id_type":"pgn","id":61443,
+      "type":"uint","start_byte":2,"length":1,"scale":0.4
+    },
+
     "engine_hours": {
       "id_type":"pgn","id":65253,
       "type":"uint","start_byte":1,"length":4,"scale":0.05
