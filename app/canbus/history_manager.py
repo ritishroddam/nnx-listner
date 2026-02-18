@@ -12,17 +12,20 @@ THRESHOLD = {"engine_rpm":50,"speed_kmh":1,"fuel_rate_lph":0.2,"soc_pct":1}
 
 async def store_can_history_if_changed(imei, new_signals, ts):
     print(f"[DEBUG] Storing CAN history for IMEI: {imei} with signals: {new_signals}")
-    last = await vehicle_can_state_collection.find_one({"imei": imei})
-    old = last["signals"] if last else {}
-    changed = {}
+    try:
+        last = await vehicle_can_state_collection.find_one({"imei": imei})
+        old = last["signals"] if last else {}
+        changed = {}
 
-    for k,v in new_signals.items():
-        if abs(v - old.get(k, 0)) > THRESHOLD.get(k,0):
-            changed[k] = v
+        for k,v in new_signals.items():
+            if abs(v - old.get(k, 0)) > THRESHOLD.get(k,0):
+                changed[k] = v
 
-    if changed:
-        await vehicle_can_history_collection.insert_one({
-            "imei": imei,
-            "timestamp": ts,
-            "signals": changed
-        })
+        if changed:
+            await vehicle_can_history_collection.insert_one({
+                "imei": imei,
+                "timestamp": ts,
+                "signals": changed
+            })
+    except Exception as e:
+        print(f"[DEBUG] Error in store_can_history_if_changed for IMEI {imei}: {e}")
