@@ -34,8 +34,8 @@
     },
 
     "fuel_level_pct": {
-      "id_type":"pgn","id":65276,
-      "type":"uint","start_byte":2,"length":1,"scale":0.4
+      "id_type":"pgn","id":65276, 
+      "type":"uint","start_byte":1,"length":1,"scale":0.4
     }
   }
 }

@@ -33,13 +33,8 @@
       "type":"uint","start_byte":1,"length":4,"scale":0.005
     },
 
-    "fuel_level_pct_fms": {
-      "id_type":"pgn","id":65364,
-      "type":"uint","start_byte":2,"length":1,"scale":0.4
-    },
-
     "fuel_level_pct": {
-      "id_type":"pgn","id":65276,
+      "id_type":"pgn","id":65276, 
       "type":"uint","start_byte":1,"length":1,"scale":0.4
     }
   }
