@@ -18,8 +18,14 @@ async def store_can_history_if_changed(imei, new_signals, ts):
         changed = {}
 
         for k,v in new_signals.items():
-            if abs(v - old.get(k, 0)) > THRESHOLD.get(k,0):
-                changed[k] = v
+            try:
+                v_float = float(v) if isinstance(v, str) else v
+                old_val = float(old.get(k, 0)) if isinstance(old.get(k, 0), str) else old.get(k, 0)
+                if abs(v_float - old_val) > THRESHOLD.get(k, 0):
+                    changed[k] = v
+            except (ValueError, TypeError):
+                if v != old.get(k):
+                    changed[k] = v
 
         if changed:
             await vehicle_can_history_collection.insert_one({
@@ -28,4 +34,4 @@ async def store_can_history_if_changed(imei, new_signals, ts):
                 "signals": changed
             })
     except Exception as e:
-        print(f"[DEBUG] Error in store_can_history_if_changed for IMEI {imei}: {e}")
+        print(f"[ERROR] in store_can_history_if_changed for IMEI {imei}: {e}")
