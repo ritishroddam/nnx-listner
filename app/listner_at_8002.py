@@ -808,7 +808,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     except asyncio.TimeoutError:
         print(f"[{datetime.now()} ERROR] Timeout {addr} after {READ_TIMEOUT}s")
     except Exception as e:
-        print(f"[{datetime.now()} ERROR] {addr}: {e}")
+        print(f"[{datetime.now()} ERROR] in handle_client {addr}: {e}")
     finally:
         try:
             writer.close()
