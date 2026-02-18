@@ -23,6 +23,26 @@
       "type":"uint","start_byte":1,"length":2,"scale":0.05
     },
 
+    "fuel_consumption_l": {
+      "id_type":"pgn","id":65257,
+      "type":"uint","start_byte":5,"length":4,"scale":0.5
+    },
+
+    "diesel_exhaust_fluid_level_pct": {
+      "id_type":"pgn","id":65110,
+      "type":"uint","start_byte":1,"length":1,"scale":0.4
+    },
+
+    "selected_gear": {
+      "id_type": "pgn","id": 61445,
+      "type": "int","start_byte": 1,"length": 1,"offset": -125,"min": -8,"max": 126
+    },
+
+    "current_gear": {
+      "id_type": "pgn","id": 61445,
+      "type": "int","start_byte": 4,"length": 1,"offset": -125,"min": -8,"max": 126
+    },
+
     "coolant_temp_c": {
       "id_type":"pgn","id":65262,
       "type":"uint","start_byte":1,"length":1,"offset":-40
