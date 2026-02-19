@@ -343,15 +343,12 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
         can_frames = await extract_can_frames(raw_can_data)
         if not can_frames:
             return {}
+        
+        canData = await handle_can(imei, can_frames, ts)
 
         if "odometer_km" in can_frames:
             new_odometer = _to_float(can_frames["odometer_km"])
 
-            await vehicle_odometer_coll.update_one(
-                {"imei": imei},
-                {"$set": {"odometer": new_odometer}},
-                upsert=True
-            )
         else:
             vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
             odometer_history = vehicle_odometer_data.get("odometer", 0) if vehicle_odometer_data else 0
@@ -359,13 +356,12 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
 
             new_odometer = odometer_history + (odometer_current / 1000) if odometer_current is not None else odometer_history
 
-            await vehicle_odometer_coll.update_one(
-                {"imei": imei},
-                {"$set": {"odometer": new_odometer}},
-                upsert=True
-            )
+        await vehicle_odometer_coll.update_one(
+            {"imei": imei},
+            {"$set": {"odometer": new_odometer}},
+            upsert=True
+        )
 
-        canData = await handle_can(imei, can_frames, ts)
 
         doc: Dict[str, Any] = {
             "type": "LOCATION",
