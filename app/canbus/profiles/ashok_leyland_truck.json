@@ -8,6 +8,11 @@
       "type":"uint","start_byte":4,"length":2,"scale":0.125
     },
 
+    "wheel_based_speed_kmh": {
+      "id_type": "pgn","id": 65265,
+      "type": "uint","start_byte": 2,"length": 2,"scale": 0.00390625,"min": 0,"max": 250
+    },
+
     "accelerator_pct": {
       "id_type":"pgn","id":61443,
       "type":"uint","start_byte":2,"length":1,"scale":0.4
