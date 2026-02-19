@@ -15,7 +15,7 @@ from alerts import dataToAlertParser
 # Config
 # -----------------------
 HOST = "0.0.0.0"
-PORT = 8093
+PORT = 8003
 READ_TIMEOUT = 300
 DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 BEARING_DEGREES = 360 / len(DIRECTIONS)
