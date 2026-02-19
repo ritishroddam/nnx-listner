@@ -357,7 +357,7 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
             odometer_history = vehicle_odometer_data.get("odometer", 0) if vehicle_odometer_data else 0
             odometer_current = _to_float(g(46))
 
-            new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
+            new_odometer = odometer_history + (odometer_current / 1000) if odometer_current is not None else odometer_history
 
             await vehicle_odometer_coll.update_one(
                 {"imei": imei},
