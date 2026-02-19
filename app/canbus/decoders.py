@@ -20,10 +20,26 @@ def decode_enum(data, rule):
     raw = data[rule["byte"] - 1]
     return rule["map"].get(str(raw))
 
+def decode_bits(data: bytes, rule: dict):
+    """
+    Extract bit-field from a single byte
+    """
+    start_byte = rule["start_byte"] - 1
+    start_bit  = rule["start_bit"]
+    bit_length = rule["bit_length"]
+
+    byte_val = data[start_byte]
+
+    mask = (1 << bit_length) - 1
+    value = (byte_val >> start_bit) & mask
+
+    return value
+
 DECODERS = {
     "uint": decode_uint,
     "int": decode_int,
     "bit": decode_bit,
     "bool": decode_bool,
-    "enum": decode_enum
+    "enum": decode_enum,
+    "bits": decode_bits
 }

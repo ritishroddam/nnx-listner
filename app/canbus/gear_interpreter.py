@@ -51,5 +51,7 @@ def interpret_gear(decoded_signals: dict) -> dict:
         else:
             decoded_signals["selected_gear_label"] = selected_gear_label
             
+    
+            
 
     return decoded_signals

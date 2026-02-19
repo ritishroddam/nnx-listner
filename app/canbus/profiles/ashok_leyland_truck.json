@@ -13,6 +13,11 @@
       "type": "uint","start_byte": 2,"length": 2,"scale": 0.00390625,"min": 0,"max": 250
     },
 
+    "clutch_pedal_state": {
+      "id_type": "pgn","id": 65265,
+      "type": "bits","start_byte": 4,"start_bit": 0,"bit_length": 2
+    },
+
     "accelerator_pct": {
       "id_type":"pgn","id":61443,
       "type":"uint","start_byte":2,"length":1,"scale":0.4

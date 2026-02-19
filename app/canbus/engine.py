@@ -1,6 +1,8 @@
 from .utils import get_pgn
 from .decoders import DECODERS
 from .gear_interpreter import interpret_gear
+from .clutch_interpreter import interpret_clutch
+
 
 def match_frame(rule, can_id):
     if rule["id_type"] == "pgn":
@@ -43,4 +45,5 @@ def decode_with_profile(frames, profile):
                 results[signal] = value
     print(f"[DEBUG] Decoded signals: {results}")
     decoded_signals = interpret_gear(results)
+    decoded_signals = interpret_clutch(decoded_signals)
     return decoded_signals
