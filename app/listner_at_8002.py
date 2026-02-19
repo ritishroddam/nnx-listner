@@ -354,7 +354,7 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
             )
         else:
             vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
-            odometer_history = vehicle_odometer_data.get("odometer", 0)
+            odometer_history = vehicle_odometer_data.get("odometer", 0) if vehicle_odometer_data else 0
             odometer_current = _to_float(g(46))
 
             new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
@@ -505,7 +505,7 @@ async def parse_packet(raw: str) -> Dict[str, Any]:
         # neighbors slice inclusive of index 45 -> [35:46]
         neighbors = _parse_neighbors(parts[34:46])
         vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
-        odometer_history = vehicle_odometer_data.get("odometer", 0)
+        odometer_history = vehicle_odometer_data.get("odometer", 0) if vehicle_odometer_data else 0
         odometer_current = _to_float(g(46))
         
         new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
