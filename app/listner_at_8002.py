@@ -42,6 +42,7 @@ COL_HEALTH = "atlantaAis140_health"
 COL_GEOCODED = "geocoded_address"
 COL_RAW_SUBSCRIPTIONS = "raw_log_subscriptions"
 COL_VEHICLE_INVENTORY = "vehicle_inventory"
+COL_VEHICLE_ODOMETER = "vehicle_odometer"
 # -----------------------
 # Mongo (Motor)
 # -----------------------
@@ -54,6 +55,7 @@ health_coll = db[COL_HEALTH]
 rawLogSubscriptions = db[COL_RAW_SUBSCRIPTIONS]
 geocode_coll = db[COL_GEOCODED]
 vehicle_invy_coll = db[COL_VEHICLE_INVENTORY]
+vehicle_odometer_coll = db[COL_VEHICLE_ODOMETER]
 
 # -----------------------
 # Batching queues (backpressure)
@@ -344,6 +346,27 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
     if not can_frames:
         return {}
     
+    if "odometer_km" in can_frames:
+        new_odometer = _to_float(can_frames["odometer_km"])
+        
+        await vehicle_odometer_coll.update_one(
+            {"imei": imei},
+            {"$set": {"odometer": new_odometer}},
+            upsert=True
+        )
+    else:
+        vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
+        odometer_history = vehicle_odometer_data.get("odometer", 0)
+        odometer_current = _to_float(g(46))
+        
+        new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
+        
+        await vehicle_odometer_coll.update_one(
+            {"imei": imei},
+            {"$set": {"odometer": new_odometer}},
+            upsert=True
+        )
+    
     canData = await handle_can(imei, can_frames, ts)
     
     doc: Dict[str, Any] = {
@@ -382,7 +405,7 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
             "internalBatteryVoltage": _to_float(g(26)),
             "emergencyStatus": _to_int(g(27)),
             "tamper": g(28),
-            "odometer": _to_float(g(39)),
+            "odometer": new_odometer,
         },
         "network": {
             "operator": g(22),
@@ -480,6 +503,17 @@ async def parse_packet(raw: str) -> Dict[str, Any]:
         
         # neighbors slice inclusive of index 45 -> [35:46]
         neighbors = _parse_neighbors(parts[34:46])
+        vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
+        odometer_history = vehicle_odometer_data.get("odometer", 0)
+        odometer_current = _to_float(g(46))
+        
+        new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
+        
+        await vehicle_odometer_coll.update_one(
+            {"imei": imei},
+            {"$set": {"odometer": new_odometer}},
+            upsert=True
+        )
         
         doc: Dict[str, Any] = {
             "type": "LOCATION",
@@ -517,7 +551,7 @@ async def parse_packet(raw: str) -> Dict[str, Any]:
                 "internalBatteryVoltage": _to_float(g(26)),
                 "emergencyStatus": _to_int(g(27)),
                 "tamper": g(28),
-                "odometer": _to_float(g(51)),
+                "odometer": new_odometer,
             },
             "network": {
                 "operator": g(22),
