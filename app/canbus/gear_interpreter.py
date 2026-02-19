@@ -19,10 +19,10 @@ def interpret_gear(decoded_signals: dict) -> dict:
             return "N"
 
         # Reverse gears
-        if val < 0 and speed >= 5:
+        if val < 0 and speed <= 10:
             return f"R{abs(val)}"
         
-        if val > 0 and speed >= 5:
+        if val > 0 and speed >= 1:
             return f"G{val}"
 
         # Forward gears
