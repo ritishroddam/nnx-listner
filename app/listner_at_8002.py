@@ -338,93 +338,94 @@ async def extract_can_frames(raw_packet: str):
 
 
 async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time_raw: str, lat: float, lon: float, lat_dir: str, lon_dir: str, ts: datetime) -> Dict[str, Any]:
-    
-    raw_can_data = g(41)
-    
-    can_frames = await extract_can_frames(raw_can_data)
-    
-    if not can_frames:
-        return {}
-    
-    if "odometer_km" in can_frames:
-        new_odometer = _to_float(can_frames["odometer_km"])
-        
-        await vehicle_odometer_coll.update_one(
-            {"imei": imei},
-            {"$set": {"odometer": new_odometer}},
-            upsert=True
-        )
-    else:
-        vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
-        odometer_history = vehicle_odometer_data.get("odometer", 0)
-        odometer_current = _to_float(g(46))
-        
-        new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
-        
-        await vehicle_odometer_coll.update_one(
-            {"imei": imei},
-            {"$set": {"odometer": new_odometer}},
-            upsert=True
-        )
-    
-    canData = await handle_can(imei, can_frames, ts)
-    
-    doc: Dict[str, Any] = {
-        "type": "LOCATION",
-        "imei": imei,
-        "LicensePlateNumber": vrn if vrn not in ("", None) else None,
-        "timestamp": datetime.now(timezone.utc),
-        "vendor": g(2),
-        "firmware": g(3),
-        "packet": {
-            "type": g(4),
-            "id": g(5),
-            "status": g(6),
-            "frameNumber": _to_int(g(36)),
-        },
-        "gps": {
-            "date": _pad_left(date_raw, 8),       # raw ddmmyyyy (zero-padded)
-            "time": _pad_left(time_raw, 6),       # raw hhmmss (zero-padded)
-            "timestamp": ts,                      # ISO UTC (can be None if malformed)
-            "gpsStatus": _to_int(g(9)),
-            "lat": lat,
-            "lon": lon,
-            "latDir": lat_dir or None,
-            "lonDir": lon_dir or None,
-            "heading": _to_float(g(17)),
-            "numSatellites": _to_int(g(18)),
-            "altitude": _to_float(g(19)),
-            "pdop": _to_float(g(20)),
-            "hdop": _to_float(g(21)),
-        },
-        "telemetry": {
-            "speed": _to_float(g(16)),
-            "ignition": _to_int(g(23)),
-            "mainPower": _to_int(g(24)),
-            "mainBatteryVoltage": _to_float(g(25)),
-            "internalBatteryVoltage": _to_float(g(26)),
-            "emergencyStatus": _to_int(g(27)),
-            "tamper": g(28),
-            "odometer": new_odometer,
-        },
-        "network": {
-            "operator": g(22),
-            "gsmSignal": _to_int(g(29)),
-            "mcc": _to_int(g(30)),
-            "mnc": _to_int(g(31)),
-            "lac": g(32),
-            "cellId": g(33),
-        },
-        "io": {
-            "digitalInputs": g(34),
-            "digitalOutputs": g(35),
-            "analog1": _to_float(g(37)),
-            "analog2": _to_float(g(38)),
-        },
-        "canData": canData,  # Placeholder for future CAN bus parsing (e.g. OBD2)
-        "dataTypeIndicator": g(40),
-    }
-    return doc
+    try:
+        raw_can_data = g(41)
+        can_frames = await extract_can_frames(raw_can_data)
+        if not can_frames:
+            return {}
+
+        if "odometer_km" in can_frames:
+            new_odometer = _to_float(can_frames["odometer_km"])
+
+            await vehicle_odometer_coll.update_one(
+                {"imei": imei},
+                {"$set": {"odometer": new_odometer}},
+                upsert=True
+            )
+        else:
+            vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
+            odometer_history = vehicle_odometer_data.get("odometer", 0)
+            odometer_current = _to_float(g(46))
+
+            new_odometer = odometer_history + (odometer_current * 1000) if odometer_current is not None else odometer_history
+
+            await vehicle_odometer_coll.update_one(
+                {"imei": imei},
+                {"$set": {"odometer": new_odometer}},
+                upsert=True
+            )
+
+        canData = await handle_can(imei, can_frames, ts)
+
+        doc: Dict[str, Any] = {
+            "type": "LOCATION",
+            "imei": imei,
+            "LicensePlateNumber": vrn if vrn not in ("", None) else None,
+            "timestamp": datetime.now(timezone.utc),
+            "vendor": g(2),
+            "firmware": g(3),
+            "packet": {
+                "type": g(4),
+                "id": g(5),
+                "status": g(6),
+                "frameNumber": _to_int(g(36)),
+            },
+            "gps": {
+                "date": _pad_left(date_raw, 8),       # raw ddmmyyyy (zero-padded)
+                "time": _pad_left(time_raw, 6),       # raw hhmmss (zero-padded)
+                "timestamp": ts,                      # ISO UTC (can be None if malformed)
+                "gpsStatus": _to_int(g(9)),
+                "lat": lat,
+                "lon": lon,
+                "latDir": lat_dir or None,
+                "lonDir": lon_dir or None,
+                "heading": _to_float(g(17)),
+                "numSatellites": _to_int(g(18)),
+                "altitude": _to_float(g(19)),
+                "pdop": _to_float(g(20)),
+                "hdop": _to_float(g(21)),
+            },
+            "telemetry": {
+                "speed": _to_float(g(16)),
+                "ignition": _to_int(g(23)),
+                "mainPower": _to_int(g(24)),
+                "mainBatteryVoltage": _to_float(g(25)),
+                "internalBatteryVoltage": _to_float(g(26)),
+                "emergencyStatus": _to_int(g(27)),
+                "tamper": g(28),
+                "odometer": new_odometer,
+            },
+            "network": {
+                "operator": g(22),
+                "gsmSignal": _to_int(g(29)),
+                "mcc": _to_int(g(30)),
+                "mnc": _to_int(g(31)),
+                "lac": g(32),
+                "cellId": g(33),
+            },
+            "io": {
+                "digitalInputs": g(34),
+                "digitalOutputs": g(35),
+                "analog1": _to_float(g(37)),
+                "analog2": _to_float(g(38)),
+            },
+            "canData": canData,  # Placeholder for future CAN bus parsing (e.g. OBD2)
+            "dataTypeIndicator": g(40),
+        }
+        return doc
+    except Exception as e:
+        print(f"[ERROR] CAN packet parsing error: {e}")
+        return g
 
 async def parse_packet(raw: str) -> Dict[str, Any]:
     """
