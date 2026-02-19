@@ -12,12 +12,14 @@ from app import routes
 ais140_path = os.path.join(os.path.dirname(__file__), 'ais140.py')
 map_server_path = os.path.join(os.path.dirname(__file__), 'map_server.py')
 run_distinct_vehicle_data_store_path = os.path.join(os.path.dirname(__file__), 'distinctVehicleDataStore.py')
+run_live_map_view_collection_path = os.path.join(os.path.dirname(__file__), 'live_map_view_collection.py')
 
 # Subprocess references
 subprocesses = {
     "ais140": None,
     "map_server": None,
-    "distinct_vehicle_data_store": None
+    "distinct_vehicle_data_store": None,
+    "live_map_view_collection": None,
 }
 
 # Function to start subprocesses
@@ -26,6 +28,7 @@ def start_subprocesses():
     subprocesses["ais140"] = subprocess.Popen(['python', ais140_path])
     subprocesses["map_server"] = subprocess.Popen(['python', map_server_path])
     subprocesses["distinct_vehicle_data_store"] = subprocess.Popen(['python', run_distinct_vehicle_data_store_path])
+    subprocesses["live_map_view_collection"] = subprocess.Popen(['python', run_live_map_view_collection_path])
 
 # Function to monitor subprocesses
 def monitor_subprocesses():
@@ -39,6 +42,8 @@ def monitor_subprocesses():
                     subprocesses[name] = subprocess.Popen(['python', run_distinct_vehicle_data_store_path])
                 elif name == "ais140":
                     subprocesses[name] = subprocess.Popen(['python', ais140_path])
+                elif name == "live_map_view_collection":
+                    subprocesses[name] = subprocess.Popen(['python', run_live_map_view_collection_path])
         time.sleep(60)  # Check every 60 seconds
 
 # Start subprocesses initially
