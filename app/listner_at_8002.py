@@ -425,7 +425,7 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
         return doc
     except Exception as e:
         print(f"[ERROR] CAN packet parsing error: {e}")
-        return g
+        return {}
 
 async def parse_packet(raw: str) -> Dict[str, Any]:
     """
