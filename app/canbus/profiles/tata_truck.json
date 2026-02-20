@@ -12,6 +12,11 @@
       "id_type": "pgn","id": 65265,
       "type": "uint","start_byte": 2,"length": 2,"scale": 0.00390625,"min": 0,"max": 250
     },
+    
+    "clutch_pedal_state": {
+      "id_type": "pgn","id": 65265,
+      "type": "bits","start_byte": 4,"start_bit": 3,"bit_length": 2
+    },
 
     "accelerator_pct": {
       "id_type":"pgn","id":61443,
@@ -31,6 +36,16 @@
     "fuel_consumption_l": {
       "id_type":"pgn","id":65257,
       "type":"uint","start_byte":5,"length":4,"scale":0.5
+    },
+  
+    "fuel_level_pct": {
+      "id_type":"pgn","id":65276, 
+      "type":"uint","start_byte":1,"length":1,"scale":0.4
+    },
+
+    "current_fuel_economu_kmpl": {
+      "id_type":"pgn","id":65266,
+      "type":"uint","start_byte":2,"length":2,"scale":0.001953125,"min":0,"max": 128
     },
 
     "diesel_exhaust_fluid_level_pct": {
@@ -56,11 +71,6 @@
     "vehicle_distance_km": {
       "id_type":"pgn","id":65248,
       "type":"uint","start_byte":1,"length":4,"scale":0.005
-    },
-
-    "fuel_level_pct": {
-      "id_type":"pgn","id":65276, 
-      "type":"uint","start_byte":1,"length":1,"scale":0.4
     }
   }
 }
