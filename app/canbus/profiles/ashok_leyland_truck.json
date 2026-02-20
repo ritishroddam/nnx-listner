@@ -15,7 +15,7 @@
 
     "clutch_pedal_state": {
       "id_type": "pgn","id": 65265,
-      "type": "bits","start_byte": 4,"start_bit": 0,"bit_length": 2
+      "type": "bits","start_byte": 4,"start_bit": 3,"bit_length": 2
     },
 
     "accelerator_pct": {

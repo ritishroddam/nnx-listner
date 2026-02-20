@@ -25,7 +25,7 @@ def decode_bits(data: bytes, rule: dict):
     Extract bit-field from a single byte
     """
     start_byte = rule["start_byte"] - 1
-    start_bit  = rule["start_bit"]
+    start_bit  = rule["start_bit"] - 1 
     bit_length = rule["bit_length"]
 
     byte_val = data[start_byte]
