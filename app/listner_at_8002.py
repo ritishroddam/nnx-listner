@@ -346,8 +346,8 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
         
         canData = await handle_can(imei, can_frames, ts)
 
-        if "odometer_km" in can_frames:
-            new_odometer = _to_float(can_frames["odometer_km"])
+        if "odometer_km" in canData:
+            new_odometer = _to_float(canData["odometer_km"])
             print(f"[DEBUG] Odometer from CAN frames: {new_odometer} km")
 
         else:
