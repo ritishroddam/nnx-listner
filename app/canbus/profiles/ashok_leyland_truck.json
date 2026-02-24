@@ -45,7 +45,7 @@
 
     "current_fuel_economu_kmpl": {
       "id_type":"pgn","id":65266,
-      "type":"uint","start_byte":2,"length":2,"scale":0.001953125,"min":0,"max": 128
+      "type":"uint","start_byte":3,"length":2,"scale":0.001953125,"min":0,"max": 128
     },
 
     "diesel_exhaust_fluid_level_pct": {
