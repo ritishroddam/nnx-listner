@@ -7,6 +7,9 @@ from .clutch_interpreter import interpret_clutch
 def match_frame(rule, can_id):
     if rule["id_type"] == "pgn":
         return get_pgn(can_id) == rule["id"]
+    if rule["id_type"] == "number":
+        print(f"[DEBUG] Matching CAN ID: {can_id} against rule ID: {rule['id']} with id_type 'number'")
+        return int(can_id) == rule["id"]
     if rule["id_type"] == "can_id":
         return can_id.upper() == rule["id"].upper()
     return False
@@ -25,7 +28,6 @@ def validate_range(value, rule):
         return None
 
     return value
-
 
 def decode_with_profile(frames, profile):
     results = {}

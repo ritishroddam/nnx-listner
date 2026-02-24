@@ -1,0 +1,86 @@
+{
+  "profile_name": "tata_xpress_ev",
+
+  "signals": {
+
+    "range_km": {
+      "id_type": "number",
+      "id": 93,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 1,
+      "scale": 2
+    },
+
+    "soc_pct": {
+      "id_type": "number",
+      "id": 93,
+      "type": "uint",
+      "start_byte": 2,
+      "length": 1,
+      "scale": 0.5,
+      "min": 0,
+      "max": 100
+    },
+
+    "odometer_km": {
+      "id_type": "number",
+      "id": 733,
+      "type": "uint",
+      "start_byte": 6,
+      "length": 2
+    },
+
+    "gear_raw": {
+      "id_type": "number",
+      "id": 98,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 1
+    },
+
+    "ac_raw": {
+      "id_type": "number",
+      "id": 95,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 1
+    },
+
+    "brake_switch": {
+      "id_type": "number",
+      "id": 95,
+      "type": "bits",
+      "start_byte": 1,
+      "start_bit": 4,
+      "bit_length": 1
+    },
+
+    "hand_brake_switch": {
+      "id_type": "number",
+      "id": 95,
+      "type": "bits",
+      "start_byte": 1,
+      "start_bit": 3,
+      "bit_length": 1
+    },
+
+    "slow_charging": {
+      "id_type": "number",
+      "id": 506,
+      "type": "bits",
+      "start_byte": 1,
+      "start_bit": 3,
+      "bit_length": 1
+    },
+
+    "fast_charging": {
+      "id_type": "number",
+      "id": 506,
+      "type": "bits",
+      "start_byte": 1,
+      "start_bit": 0,
+      "bit_length": 1
+    }
+  }
+}
