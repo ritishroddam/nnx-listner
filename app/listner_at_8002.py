@@ -508,7 +508,14 @@ async def parse_packet(raw: str) -> Dict[str, Any]:
         odometer_history = vehicle_odometer_data.get("odometer", 0) if vehicle_odometer_data else 0
         odometer_current = _to_float(g(46))
         
+        print(f"[DEBUG] Odometer values for IMEI {imei} - History: {odometer_history} km, Current: {odometer_current} m")
+
         new_odometer = odometer_history + (odometer_current / 1000) if odometer_current is not None else odometer_history
+        
+        print(f"[DEBUG] Calculated new odometer for IMEI {imei}: {new_odometer} km")
+
+        
+        # new_odometer = odometer_history + (odometer_current / 1000) if odometer_current is not None else odometer_history
         
         await vehicle_odometer_coll.update_one(
             {"imei": imei},
