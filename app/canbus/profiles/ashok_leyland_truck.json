@@ -2,80 +2,157 @@
   "profile_name": "ashok_leyland_truck",
 
   "signals": {
-
     "engine_rpm": {
-      "id_type":"pgn","id":61444,
-      "type":"uint","start_byte":4,"length":2,"scale":0.125
+      "id_type": "pgn",
+      "id": 61444,
+      "type": "uint",
+      "start_byte": 4,
+      "length": 2,
+      "scale": 0.125
     },
 
     "wheel_based_speed_kmh": {
-      "id_type": "pgn","id": 65265,
-      "type": "uint","start_byte": 2,"length": 2,"scale": 0.00390625,"min": 0,"max": 250
+      "id_type": "pgn",
+      "id": 65265,
+      "type": "uint",
+      "start_byte": 2,
+      "length": 2,
+      "scale": 0.00390625,
+      "min": 0,
+      "max": 250
     },
 
     "clutch_pedal_state": {
-      "id_type": "pgn","id": 65265,
-      "type": "bits","start_byte": 4,"start_bit": 3,"bit_length": 2
+      "id_type": "pgn",
+      "id": 65265,
+      "type": "bits",
+      "start_byte": 4,
+      "start_bit": 3,
+      "bit_length": 2
     },
 
     "accelerator_pct": {
-      "id_type":"pgn","id":61443,
-      "type":"uint","start_byte":2,"length":1,"scale":0.4,"min":0,"max":100
+      "id_type": "pgn",
+      "id": 61443,
+      "type": "uint",
+      "start_byte": 2,
+      "length": 1,
+      "scale": 0.4,
+      "min": 0,
+      "max": 100
     },
 
     "engine_hours": {
-      "id_type":"pgn","id":65253,
-      "type":"uint","start_byte":1,"length":4,"scale":0.05
+      "id_type": "pgn",
+      "id": 65253,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 4,
+      "scale": 0.05
     },
 
     "fuel_rate_lph": {
-      "id_type":"pgn","id":65266,
-      "type":"uint","start_byte":1,"length":2,"scale":0.05,"min":0,"max": 3212.75
+      "id_type": "pgn",
+      "id": 65266,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 2,
+      "scale": 0.05,
+      "min": 0,
+      "max": 3212.75
     },
 
     "current_fuel_economu_kmpl": {
-      "id_type":"pgn","id":65266,
-      "type":"uint","start_byte":3,"length":2,"scale":0.001953125,"min":0,"max": 125.5
+      "id_type": "pgn",
+      "id": 65266,
+      "type": "uint",
+      "start_byte": 3,
+      "length": 2,
+      "scale": 0.001953125,
+      "min": 0,
+      "max": 125.5
     },
 
     "fuel_consumption_l": {
-      "id_type":"pgn","id":65257,
-      "type":"uint","start_byte":5,"length":4,"scale":0.5
+      "id_type": "pgn",
+      "id": 65257,
+      "type": "uint",
+      "start_byte": 5,
+      "length": 4,
+      "scale": 0.5
     },
 
     "fuel_level_pct": {
-      "id_type":"pgn","id":65364,
-      "type":"uint","start_byte":7,"length":1,"scale":0.4,"min":0,"max":100
+      "id_type": "pgn",
+      "id": 65364,
+      "type": "uint",
+      "start_byte": 7,
+      "length": 1,
+      "scale": 0.4,
+      "min": 0,
+      "max": 100
     },
 
     "diesel_exhaust_fluid_level_pct": {
-      "id_type":"pgn","id":65110,
-      "type":"uint","start_byte":1,"length":1,"scale":0.4,"min":0,"max":100
+      "id_type": "pgn",
+      "id": 65110,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 1,
+      "scale": 0.4,
+      "min": 0,
+      "max": 100
     },
 
     "selected_gear": {
-      "id_type": "pgn","id": 61445,
-      "type": "int","start_byte": 1,"length": 1,"offset": -125,"min": -8,"max": 126
+      "id_type": "pgn",
+      "id": 61445,
+      "type": "int",
+      "start_byte": 1,
+      "length": 1,
+      "offset": -125,
+      "min": -8,
+      "max": 126
     },
 
     "current_gear": {
-      "id_type": "pgn","id": 61445,
-      "type": "int","start_byte": 4,"length": 1,"offset": -125,"min": -8,"max": 126
+      "id_type": "pgn",
+      "id": 61445,
+      "type": "int",
+      "start_byte": 4,
+      "length": 1,
+      "offset": -125,
+      "min": -8,
+      "max": 126
     },
 
     "coolant_temp_c": {
-      "id_type":"pgn","id":65262,
-      "type":"uint","start_byte":1,"length":1,"offset":-40
+      "id_type": "pgn",
+      "id": 65262,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 1,
+      "offset": -40
     },
 
     "vehicle_distance_km": {
-      "id_type":"pgn","id":65248,
-      "type":"uint","start_byte":1,"length":4,"scale":0.005
+      "id_type": "pgn",
+      "id": 65248,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 4,
+      "scale": 0.005
     },
 
     "odometer_km": {
-      "id_type":"pgn","id":65364,
-      "type":"uint","start_byte":1,"length":4,"scale":0.125,"min":0,"max": 536870912
+      "id_type": "pgn",
+      "id": 65364,
+      "type": "uint",
+      "start_byte": 1,
+      "length": 4,
+      "scale": 0.125,
+      "min": 0,
+      "max": 536870912
     }
   }
 }
