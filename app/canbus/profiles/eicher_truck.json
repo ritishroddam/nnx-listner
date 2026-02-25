@@ -69,8 +69,13 @@
     },
 
     "vehicle_distance_km": {
-      "id_type":"pgn","id":65248,
+      "id_type":"pgn","id":65217,
       "type":"uint","start_byte":1,"length":4,"scale":0.005
+    },
+
+    "odometer_km": {
+      "id_type":"pgn","id":65364,
+      "type":"uint","start_byte":1,"length":4,"scale":0.125,"min":0,"max": 536870912
     }
   }
 }
