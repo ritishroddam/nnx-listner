@@ -409,7 +409,8 @@ async def processDataForOverSpeed(data, vehicleInfo):
                                 continue
                             
                             if user['role'] != "clientAdmin":
-                                if user['_id'] not in vehicleInfo['AssignedUsers']:
+                                assigned_users = vehicleInfo.get('AssignedUsers', [])
+                                if user['_id'] not in assigned_users:
                                     continue
                             
                             userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
@@ -480,7 +481,8 @@ async def process_generic_alert(data, vehicleInfo, alert_key):
                             continue
                         
                         if user['role'] != "clientAdmin":
-                            if user['_id'] not in vehicleInfo['AssignedUsers']:
+                            assigned_users = vehicleInfo.get('AssignedUsers', [])
+                            if user['_id'] not in assigned_users:
                                 continue
                         
                         userConfig = await userConfigCollection.find_one({'userID': user.get('_id')})
