@@ -228,7 +228,7 @@ def store_data_in_mongodb(json_data):
             inventory_data = vehicle_inventory_collection.find_one({'IMEI': json_data.get('imei')})
             if inventory_data:
                 json_data['LicensePlateNumber'] = inventory_data.get('LicensePlateNumber', 'Unknown')
-                json_data['VehicleType'] = inventory_data.get('vehicle_type', 'Unknown')
+                json_data['VehicleType'] = inventory_data.get('VehicleType', 'Unknown')
                 json_data['slowSpeed'] = float(inventory_data.get('slowSpeed', "40.0"))
                 json_data['normalSpeed'] = float(inventory_data.get('normalSpeed', "60.0"))
             else:
