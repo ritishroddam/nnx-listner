@@ -287,6 +287,7 @@ async def parse_for_emit(parsedData):
         "address": address,
         "normalSpeed": normalSpeed,
         "slowSpeed": slowSpeed,
+        "canData": parsedData.get("canData", {}),
     }
     return json_data
 
