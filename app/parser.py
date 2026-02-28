@@ -142,7 +142,7 @@ async def add_tank_level_in_liters(imei, can_data):
                 fuel_level = float(can_data["fuel_level_pct"])
                 fuel_level_liters = fuel_level * fuel_tank_capacity
                 can_data["fuel_level_liters"] = round(fuel_level_liters, 2)
-                can_data[fuel_level_pct] = round(fuel_level, 2)
+                can_data['fuel_level_pct'] = round(fuel_level, 2)
     
     return can_data
     
