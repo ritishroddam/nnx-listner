@@ -256,7 +256,7 @@ async def parse_for_emit(parsedData):
     packet = parsedData.get("packet", {}) or {}
     packet_id = str(packet.get("id", ""))
     
-    can_data = get_last_can_state(parsedData.get("imei"))
+    can_data = await get_last_can_state(parsedData.get("imei"))
             
     json_data = {
         "imei": parsedData.get("imei"),
@@ -290,7 +290,7 @@ async def parse_for_emit(parsedData):
         "address": address,
         "normalSpeed": normalSpeed,
         "slowSpeed": slowSpeed,
-        "canData": can_data,
+        "canData": can_data if can_data else {},
     }
     return json_data
 
