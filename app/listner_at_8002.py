@@ -11,6 +11,7 @@ from pymongo import InsertOne, ReplaceOne, ASCENDING, DESCENDING
 
 from alerts import dataToAlertParser
 from parser import handle_can
+from canbus.can_state_cache import get_last_can_state
 
 # -----------------------
 # Config
@@ -238,7 +239,6 @@ async def parse_for_emit(parsedData):
         vehicleType = inventoryData.get("VehicleType", "Unknown")
         slowSpeed = float(inventoryData.get("slowSpeed", "40.0"))
         normalSpeed = float(inventoryData.get("normalSpeed", "60.0"))
-        fuel_tank_capacity = inventoryData.get("FuelCapacity", None)
     else:
         licensePlateNumber = "Unknown"
         vehicleType = "Unknown"
@@ -255,14 +255,8 @@ async def parse_for_emit(parsedData):
     network = parsedData.get("network", {}) or {}
     packet = parsedData.get("packet", {}) or {}
     packet_id = str(packet.get("id", ""))
-    can_data = parsedData.get("canData", {}) or {}
-
-    if fuel_tank_capacity and fuel_tank_capacity > 0 and fuel_tank_capacity != "":
-        fuel_tank_capacity = float(fuel_tank_capacity)
-        if can_data and "fuel_level_pct" in can_data:
-            fuel_level = float(can_data["fuel_level_pct"])
-            fuel_level_liters = fuel_level * fuel_tank_capacity
-            can_data["fuel_level_liters"] = round(fuel_level_liters, 2)
+    
+    can_data = get_last_can_state(parsedData.get("imei"))
             
     json_data = {
         "imei": parsedData.get("imei"),
@@ -296,7 +290,7 @@ async def parse_for_emit(parsedData):
         "address": address,
         "normalSpeed": normalSpeed,
         "slowSpeed": slowSpeed,
-        "canData": parsedData.get("canData", {}),
+        "canData": can_data,
     }
     return json_data
 

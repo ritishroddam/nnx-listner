@@ -11,6 +11,8 @@ from canbus.history_manager import store_can_history_if_changed
 mongo_client = MongoClient("mongodb+srv://doadmin:U6bOV204y9r75Iz3@private-db-mongodb-blr1-96186-4485159f.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-mongodb-blr1-96186", tz_aware=True)
 db = mongo_client["nnx"]
 
+vehicle_invy_coll = db["vehicle_inventory"]
+
 FLAT_TO_AIS140 = {
     "latitude": "gps.lat",
     "longitude": "gps.lon",
@@ -129,6 +131,21 @@ def getData(imei, date_filter, projection):
 
     return converted
 
+async def add_tank_level_in_liters(imei, can_data):
+    inventoryData = await vehicle_invy_coll.find_one({"IMEI": imei})
+    if inventoryData:
+        fuel_tank_capacity = inventoryData.get("FuelCapacity", None)
+        if fuel_tank_capacity and fuel_tank_capacity > 0 and fuel_tank_capacity != "":
+            fuel_tank_capacity = float(fuel_tank_capacity)
+            
+            if can_data and "fuel_level_pct" in can_data:
+                fuel_level = float(can_data["fuel_level_pct"])
+                fuel_level_liters = fuel_level * fuel_tank_capacity
+                can_data["fuel_level_liters"] = round(fuel_level_liters, 2)
+    
+    return can_data
+    
+
 async def handle_can(imei, can_frames, ts):
     try:
         print("[DEBUG] Handling CAN frames for IMEI:", imei)
@@ -138,10 +155,13 @@ async def handle_can(imei, can_frames, ts):
             print(f"[DEBUG] Loaded profile '{profile_name}' for IMEI {imei}: {profile}")
 
             decoded = decode_with_profile(can_frames, profile)
-
+            print(f"[DEBUG] Final decoded CAN signals for IMEI {imei}:", decoded)
+            
+            decoded = await add_tank_level_in_liters(imei, decoded)
+            
             await store_can_history_if_changed(imei, decoded, ts)
             await update_can_state(imei, decoded, ts)
-            print(f"[DEBUG] Final decoded CAN signals for IMEI {imei}:", decoded)
+            
             return decoded
         else:
             return await get_last_can_state(imei)
