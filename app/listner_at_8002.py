@@ -346,7 +346,7 @@ async def parse_can_packet(g: callable, vrn: str, imei: str, date_raw: str, time
         
         canData = await handle_can(imei, can_frames, ts)
 
-        if "odometer_km" in canData:
+        if "odometer_km" in canData and _to_int(g(23)) == 1:
             new_odometer = round(_to_float(canData["odometer_km"]), 2)
         else:
             vehicle_odometer_data = await vehicle_odometer_coll.find_one({"imei": imei})
