@@ -133,7 +133,7 @@ def getData(imei, date_filter, projection):
 
 async def add_tank_level_in_liters(imei, can_data):
     if can_data and "fuel_level_pct" in can_data:
-        inventoryData = await vehicle_invy_coll.find_one({"IMEI": imei})
+        inventoryData = vehicle_invy_coll.find_one({"IMEI": imei})
         if inventoryData:
             fuel_tank_capacity = inventoryData.get("FuelCapacity", None)
             if fuel_tank_capacity and fuel_tank_capacity > 0 and fuel_tank_capacity != "":
